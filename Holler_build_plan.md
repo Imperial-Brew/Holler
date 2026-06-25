@@ -59,7 +59,11 @@ Guard at the route layer: task/location/item/resource writes require `owner|memb
 
 ## 4. Schema (Postgres)
 
-> All `id` are UUID PKs generated client-side. All syncable tables carry `created_by`, `created_at`, `updated_at` (server-set on every write), `deleted`, `deleted_at`. Omitted below for brevity except where noted — **apply to every table.**
+> **Sync columns — three categories, handle them differently:**
+>
+> - **Entity tables** (`users`, `locations`, `items`, `resources`, `tasks`, `captures`, **and the lookups** `location_types`, `conditions`) are independent syncable rows. Every one carries `created_by`, `created_at`, `updated_at` (server-set on every write), `deleted`, `deleted_at`, and `row_version` (see below). Audit columns are omitted in the SQL below for brevity except where shown — **apply to all of them, lookups included.**
+> - **Join tables** (`location_conditions`, `item_conditions`, `task_dependencies`, `task_resources`) carry **no** audit columns. They are *owned by a parent* and synced as part of it: a task owns its dependency list and its resource list; an item owns its required conditions; a location owns its provided conditions. **Any mutation to a join set bumps the owning parent's `updated_at`/`row_version`, and pull conveys the joins as the parent's full current set, which the client replaces wholesale.** This makes removals propagate for free (no join-row tombstones needed) and matches the desk-registration model, where you edit a task's whole "waits on" list as a unit. For `task_dependencies` the owner is the `task_id` side (the dependent task owns its prerequisite list).
+> - **`id` is always a client-generated UUID** (UUIDv7 preferred). **`row_version` is the exception to "no server counters"** — it is a *server-assigned monotonic* value used only as the sync cursor, never a PK, never created offline, so it doesn't reintroduce the offline-collision problem. See §6.
 
 ```sql
 -- ===== users =====
@@ -76,10 +80,17 @@ CREATE TABLE users (
 
 -- ===== lookups (rows, not enums) =====
 CREATE TABLE location_types (        -- pasture, field, gate, building, room, water, fenceline, pad, garden, ...
-  id UUID PRIMARY KEY, name TEXT NOT NULL UNIQUE, sort INT DEFAULT 0
+  id UUID PRIMARY KEY, name TEXT NOT NULL UNIQUE, sort INT DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  deleted BOOLEAN NOT NULL DEFAULT false, deleted_at TIMESTAMPTZ
+  -- + row_version (see §6); applies to every entity table
 );
 CREATE TABLE conditions (            -- dry, conditioned, secure, shaded, covered, ...
-  id UUID PRIMARY KEY, name TEXT NOT NULL UNIQUE
+  id UUID PRIMARY KEY, name TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  deleted BOOLEAN NOT NULL DEFAULT false, deleted_at TIMESTAMPTZ
 );
 
 -- ===== locations (self-referencing tree) =====
@@ -109,7 +120,7 @@ CREATE TABLE items (
   name TEXT NOT NULL,
   location_id UUID REFERENCES locations(id),
   quantity NUMERIC DEFAULT 1,
-  condition TEXT, notes TEXT, photo_url TEXT,
+  condition_notes TEXT, notes TEXT, photo_url TEXT,   -- condition_notes = free-text physical state ("rusty"); NOT the conditions lookup
   created_by UUID REFERENCES users(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -176,8 +187,8 @@ CREATE TABLE task_resources (
 CREATE TABLE captures (
   id UUID PRIMARY KEY,                          -- client-generated; created offline
   raw_text TEXT NOT NULL,                       -- "fix latch county rd gate, ~1mo"
-  location_hint TEXT,                           -- free text OR resolved later
-  location_id UUID REFERENCES locations(id),    -- optional if user picked one
+  location_hint TEXT,                           -- what you actually capture in the field (free text; no location list needed offline)
+  location_id UUID REFERENCES locations(id),    -- normally resolved at REGISTRATION (Phase 2), not in the field
   source TEXT NOT NULL DEFAULT 'self' CHECK (source IN ('self','request')),
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','registered','dismissed')),
   promoted_task_id UUID REFERENCES tasks(id),
@@ -272,12 +283,14 @@ Two operations, run on app open / manual "sync" / a twice-daily schedule. No web
 - `POST /sync/push` with the array. Server upserts by `id` (idempotent — re-sending is safe).
 - Server never rejects on conflict because captures are create-only.
 
-**PULL (server → clients): everything changed since last watermark.**
-- Client stores `last_synced_at`.
-- `GET /sync/pull?since=<last_synced_at>` → all rows (all tables) where `updated_at > since`, **including tombstoned rows** (so deletes propagate).
-- Client applies them to its read cache; advances `last_synced_at` to the server's response time.
+**PULL (server → clients): everything changed since last cursor.**
+- **Cursor = `row_version`, not a timestamp.** Every entity write sets `row_version` from a single global monotonic sequence (`CREATE SEQUENCE row_version_seq; ... SET row_version = nextval('row_version_seq')` in a `BEFORE INSERT OR UPDATE` trigger). This avoids the tie problem: two writes in one transaction get distinct, strictly increasing versions, so a strict `>` cursor can never skip a row. (`updated_at` stays for display, but is **not** the cursor.)
+- Client stores `last_version` (an integer; starts at 0).
+- `GET /sync/pull?since=<last_version>` → all entity rows where `row_version > since`, **including tombstoned rows** (so deletes propagate) **and each row's full join sets** (dependencies, resources, conditions — see §4 join rule; client replaces the parent's sets wholesale).
+- Client applies to its read cache; advances `last_version` to the max `row_version` in the response.
+- **Granularity:** for v1 a single all-tables pull is fine. The endpoint should accept an optional `tables=` filter (and could move to per-table cursors) once the dataset grows; note it now, don't build it yet.
 
-**Conflict rule:** last-write-wins by `updated_at`. Acceptable because real edits happen at the desk (online, effectively single-writer). Captures can't conflict. Revisit only if genuine concurrent offline edits become real — then consider ElectricSQL / PowerSync (self-hostable). Not in v1.
+**Conflict rule:** last-write-wins by `row_version` (higher wins). Acceptable because real edits happen at the desk (online, effectively single-writer) and captures can't conflict. Revisit only if genuine concurrent offline edits become real — then consider ElectricSQL / PowerSync (self-hostable). Not in v1.
 
 ---
 
@@ -285,7 +298,7 @@ Two operations, run on app open / manual "sync" / a twice-daily schedule. No web
 
 **Do not build all five screens up front.** Build one vertical slice end-to-end; it de-risks ~80% of the project (the offline round-trip is the only genuinely hard part, and the capture/append-only model makes even that easy).
 
-**Phase 0 — Plumbing.** Repo, Render service, Postgres, Alembic baseline, auth stub, `users` table, health check.
+**Phase 0 — Plumbing.** Repo, Render service, Postgres, Alembic baseline, `users` table, `row_version_seq` + trigger, health check. **Scaffold the React/Vite PWA now too** (service worker + Dexie), since Phase 1 needs the client immediately. **Auth stub:** seed one `owner` user with a known UUID and accept a single static bearer token that maps to it; every `created_by` and every sync call attributes to that user. Real multi-user/login lands at Phase 8.
 
 **Phase 1 — Walking skeleton (the slice that matters).**
 - PWA installable, service worker, Dexie outbox.
@@ -294,9 +307,9 @@ Two operations, run on app open / manual "sync" / a twice-daily schedule. No web
 - `GET /sync/pull` on the web/desk view → the capture appears.
 - **Acceptance:** kill wifi, jot 3 captures from the phone, restore wifi, open the desk view → all 3 are there. If this works, the architecture is proven.
 
-**Phase 2 — Register.** Promote a capture → task at the desk (set title, location, due). Capture flips to `registered`, links `promoted_task_id`.
+**Phase 2 — Register.** Promote a capture → task at the desk (set title, due). Capture flips to `registered`, links `promoted_task_id`. **Location assignment is stubbed here** — keep the `location_hint` text only; the location *picker* wires in at Phase 3 once locations exist. This keeps Phase 2 focused on proving capture→task promotion.
 
-**Phase 3 — Locations.** `location_types` lookup, the tree (`parent_id`), `code` field. Capture/registration can attach a location.
+**Phase 3 — Locations.** `location_types` lookup, the tree (`parent_id`), `code` field. Now wire location assignment into registration (resolve `location_hint` → `location_id`).
 
 **Phase 4 — Dependencies + Board.** `task_dependencies`, cycle check (5.3), readiness query (5.1). Board screen renders Ready/Blocked + "What I can do now" filter.
 
@@ -321,7 +334,9 @@ Two operations, run on app open / manual "sync" / a twice-daily schedule. No web
 - **DO** use one `conditions` vocabulary with two directional joins. **DON'T** create separate "traits" and "requirements" lists.
 - **DO** use lookup tables for `location_types` and `conditions`. **DON'T** use Postgres `ENUM` for these (migration pain on every new value).
 - **DO** keep captures append-only from clients in v1. **DON'T** let the field client edit existing server rows offline yet.
-- **DO** set `updated_at` server-side on every write; pull by watermark. **DON'T** trust client clocks for `updated_at`.
+- **DO** set `row_version` (global monotonic sequence) server-side on every entity write; pull by `row_version > cursor`. **DON'T** use `updated_at` as the sync cursor (timestamp ties skip rows).
+- **DO** treat `row_version` as the *one allowed* server-assigned counter — it's a sync cursor, not an identity. **DON'T** let that tempt you back into serial **primary keys**; PKs stay client-generated UUIDs.
+- **DO** sync join tables via the owning parent's full set (§4 join rule). **DON'T** give join rows their own `updated_at`/tombstones.
 - **DO** an Alembic migration for every schema change from day one.
 - **DO** enforce the cycle check (5.3) before inserting any dependency edge.
 
@@ -332,4 +347,4 @@ Two operations, run on app open / manual "sync" / a twice-daily schedule. No web
 - Photo storage target (local/object store) — needed by Phase 6/7, not before.
 - KML source format from your Google Earth export — confirm at Phase 7.
 - Whether recurrence needs full RRULE or just simple intervals — decide at Phase 9.
-- Auth: shared family login vs. per-user accounts — only matters once `requester` role lands (Phase 8); per-user is cleaner if outsiders will use it.
+- Auth: shared family login vs. per-user accounts — only matters once `requester` role lands (Phase 8); per-user is cleaner if outsiders will use it. (Phase 0 stub is defined: one seeded owner + static token.)
