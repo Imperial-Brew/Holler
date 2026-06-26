@@ -145,6 +145,71 @@ export async function registerCapture(captureId, { title, due_date, location_id 
   return { task, capture };
 }
 
+export async function setTaskStatus(id, status) {
+  const res = await fetch(`${API}/tasks/${id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${TOKEN}`,
+    },
+    body: JSON.stringify({ status }),
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Set status failed (${res.status}): ${detail}`);
+  }
+  const task = await res.json();
+  await db.tasks.put(task);
+  return task;
+}
+
+export async function deleteTask(id) {
+  const res = await fetch(`${API}/tasks/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${TOKEN}` },
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Delete task failed (${res.status}): ${detail}`);
+  }
+  await db.tasks.delete(id);
+}
+
+export async function addDependency(taskId, dependsOnId) {
+  const res = await fetch(`${API}/tasks/${taskId}/dependencies`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${TOKEN}`,
+    },
+    body: JSON.stringify({ depends_on_id: dependsOnId }),
+  });
+  if (res.status === 409) {
+    throw new Error("409");
+  }
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Add dependency failed (${res.status}): ${detail}`);
+  }
+  const task = await res.json();
+  await db.tasks.put(task);
+  return task;
+}
+
+export async function removeDependency(taskId, dependsOnId) {
+  const res = await fetch(`${API}/tasks/${taskId}/dependencies/${dependsOnId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${TOKEN}` },
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Remove dependency failed (${res.status}): ${detail}`);
+  }
+  const task = await res.json();
+  await db.tasks.put(task);
+  return task;
+}
+
 export async function sync() {
   if (syncing) return;
   syncing = true;
