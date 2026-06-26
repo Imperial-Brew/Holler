@@ -7,4 +7,10 @@ db.version(1).stores({
   meta: "key",
 });
 
+db.version(2).stores({
+  captures: "id",
+  tasks: "id",
+  meta: "key",
+});
+
 export default db;

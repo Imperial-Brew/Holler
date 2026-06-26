@@ -62,7 +62,7 @@ export async function pull(since) {
 }
 
 export async function applyPull(response) {
-  const tx = db.transaction("rw", db.captures, db.meta, async () => {
+  await db.transaction("rw", db.captures, db.tasks, db.meta, async () => {
     for (const capture of response.captures) {
       if (capture.deleted) {
         await db.captures.delete(capture.id);
@@ -70,9 +70,34 @@ export async function applyPull(response) {
         await db.captures.put({ ...capture, pendingPush: false });
       }
     }
+    for (const task of response.tasks ?? []) {
+      if (task.deleted) {
+        await db.tasks.delete(task.id);
+      } else {
+        await db.tasks.put(task);
+      }
+    }
     await db.meta.put({ key: "cursor", value: response.cursor });
   });
-  await tx;
+}
+
+export async function registerCapture(captureId, { title, due_date }) {
+  const res = await fetch(`${API}/captures/${captureId}/register`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${TOKEN}`,
+    },
+    body: JSON.stringify({ title, due_date: due_date || null }),
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Register failed (${res.status}): ${detail}`);
+  }
+  const { task, capture } = await res.json();
+  await db.tasks.put(task);
+  await db.captures.put({ ...capture, pendingPush: false });
+  return { task, capture };
 }
 
 export async function sync() {
