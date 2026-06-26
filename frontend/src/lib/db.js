@@ -13,4 +13,12 @@ db.version(2).stores({
   meta: "key",
 });
 
+db.version(3).stores({
+  captures: "id",
+  tasks: "id",
+  locations: "id",
+  location_types: "id",
+  meta: "key",
+});
+
 export default db;

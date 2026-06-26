@@ -28,6 +28,7 @@ class TaskRead(BaseModel):
     deleted: bool
     deleted_at: Optional[datetime]
     row_version: int
+    depends_on: list[uuid.UUID] = []
 
 
 class RegisterRequest(BaseModel):

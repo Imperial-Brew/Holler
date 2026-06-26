@@ -2,10 +2,13 @@ import { useState, useEffect } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import db from "./lib/db";
 import { createCapture, registerCapture, sync } from "./lib/sync";
+import LocationPicker from "./components/LocationPicker";
+import AddPlaceForm from "./components/AddPlaceForm";
 
 function RegisterForm({ capture, online }) {
   const [title, setTitle] = useState(capture.raw_text);
   const [dueDate, setDueDate] = useState("");
+  const [locationId, setLocationId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -20,6 +23,7 @@ function RegisterForm({ capture, online }) {
       await registerCapture(capture.id, {
         title: title.trim(),
         due_date: dueDate || null,
+        location_id: locationId || null,
       });
     } catch (err) {
       setError(err.message);
@@ -44,6 +48,14 @@ function RegisterForm({ capture, online }) {
         disabled={disabled}
         style={{ marginRight: "0.25rem" }}
       />
+      <span style={{ position: "relative", display: "inline-block", marginRight: "0.25rem" }}>
+        <LocationPicker value={locationId} onChange={setLocationId} disabled={disabled} />
+      </span>
+      {capture.location_hint && (
+        <span style={{ color: "gray", fontSize: "0.85em", marginRight: "0.25rem" }}>
+          hint: {capture.location_hint}
+        </span>
+      )}
       <button type="submit" disabled={disabled}>
         {submitting ? "Registering…" : "Register"}
       </button>
@@ -66,8 +78,12 @@ export default function App() {
 
   const captures = useLiveQuery(() => db.captures.toArray(), [], []);
   const tasks = useLiveQuery(() => db.tasks.toArray(), [], []);
+  const locations = useLiveQuery(() => db.locations.toArray(), [], []);
   const cursorRow = useLiveQuery(() => db.meta.get("cursor"), []);
   const cursor = cursorRow?.value ?? 0;
+
+  const locMap = {};
+  for (const loc of locations) locMap[loc.id] = loc;
 
   const toRegister = captures.filter(
     (c) => c.status === "pending" && !c.deleted && !c.pendingPush
@@ -125,6 +141,8 @@ export default function App() {
       </p>
       {error && <p style={{ color: "red" }}>{error}</p>}
 
+      <AddPlaceForm online={online} />
+
       <div style={{ marginBottom: "1rem" }}>
         <input
           type="text"
@@ -160,13 +178,23 @@ export default function App() {
         <p>No tasks yet</p>
       ) : (
         <ul>
-          {liveTasks.map((t) => (
-            <li key={t.id}>
-              <strong>{t.title}</strong>
-              {t.due_date && <span> — due {t.due_date}</span>}
-              <span style={{ color: "gray" }}> [{t.status}]</span>
-            </li>
-          ))}
+          {liveTasks.map((t) => {
+            const place = t.location_id ? locMap[t.location_id] : null;
+            return (
+              <li key={t.id}>
+                <strong>{t.title}</strong>
+                {t.due_date && <span> — due {t.due_date}</span>}
+                <span style={{ color: "gray" }}> [{t.status}]</span>
+                {place ? (
+                  <span style={{ marginLeft: "0.5rem" }}>
+                    📍 {place.name}{place.code ? ` [${place.code}]` : ""}
+                  </span>
+                ) : (
+                  <span style={{ color: "gray", marginLeft: "0.5rem" }}>—</span>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

@@ -3,5 +3,6 @@ from app.models.capture import Capture
 from app.models.task import Task
 from app.models.location_type import LocationType
 from app.models.location import Location
+from app.models.task_dependency import TaskDependency
 
-__all__ = ["User", "Capture", "Task", "LocationType", "Location"]
+__all__ = ["User", "Capture", "Task", "LocationType", "Location", "TaskDependency"]

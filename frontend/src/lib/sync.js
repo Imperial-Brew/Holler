@@ -62,33 +62,78 @@ export async function pull(since) {
 }
 
 export async function applyPull(response) {
-  await db.transaction("rw", db.captures, db.tasks, db.meta, async () => {
-    for (const capture of response.captures) {
-      if (capture.deleted) {
-        await db.captures.delete(capture.id);
-      } else {
-        await db.captures.put({ ...capture, pendingPush: false });
+  await db.transaction(
+    "rw",
+    db.captures,
+    db.tasks,
+    db.locations,
+    db.location_types,
+    db.meta,
+    async () => {
+      for (const capture of response.captures) {
+        if (capture.deleted) {
+          await db.captures.delete(capture.id);
+        } else {
+          await db.captures.put({ ...capture, pendingPush: false });
+        }
       }
-    }
-    for (const task of response.tasks ?? []) {
-      if (task.deleted) {
-        await db.tasks.delete(task.id);
-      } else {
-        await db.tasks.put(task);
+      for (const task of response.tasks ?? []) {
+        if (task.deleted) {
+          await db.tasks.delete(task.id);
+        } else {
+          await db.tasks.put(task);
+        }
       }
+      for (const loc of response.locations ?? []) {
+        if (loc.deleted) {
+          await db.locations.delete(loc.id);
+        } else {
+          await db.locations.put(loc);
+        }
+      }
+      for (const lt of response.location_types ?? []) {
+        if (lt.deleted) {
+          await db.location_types.delete(lt.id);
+        } else {
+          await db.location_types.put(lt);
+        }
+      }
+      await db.meta.put({ key: "cursor", value: response.cursor });
     }
-    await db.meta.put({ key: "cursor", value: response.cursor });
-  });
+  );
 }
 
-export async function registerCapture(captureId, { title, due_date }) {
+export async function createLocation({ name, type_id, parent_id, code }) {
+  const id = crypto.randomUUID();
+  const body = { id, name, type_id };
+  if (parent_id) body.parent_id = parent_id;
+  if (code) body.code = code;
+
+  const res = await fetch(`${API}/locations`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${TOKEN}`,
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Create location failed (${res.status}): ${detail}`);
+  }
+  const location = await res.json();
+  await db.locations.put(location);
+  return location;
+}
+
+export async function registerCapture(captureId, { title, due_date, location_id }) {
   const res = await fetch(`${API}/captures/${captureId}/register`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${TOKEN}`,
     },
-    body: JSON.stringify({ title, due_date: due_date || null }),
+    body: JSON.stringify({ title, due_date: due_date || null, location_id: location_id || null }),
   });
   if (!res.ok) {
     const detail = await res.text();

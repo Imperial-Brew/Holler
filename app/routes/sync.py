@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,6 +9,7 @@ from app.models.capture import Capture
 from app.models.location import Location
 from app.models.location_type import LocationType
 from app.models.task import Task
+from app.models.task_dependency import TaskDependency
 from app.schemas.sync import SyncPullResponse
 
 router = APIRouter(prefix="/sync", tags=["sync"])
@@ -29,7 +32,20 @@ async def sync_pull(
         .where(Task.row_version > since)
         .order_by(Task.row_version.asc())
     )
-    tasks = task_result.scalars().all()
+    tasks = list(task_result.scalars().all())
+
+    # Batch-load dependency edges for all tasks in the pull set
+    if tasks:
+        task_ids = [t.id for t in tasks]
+        edge_result = await db.execute(
+            select(TaskDependency.task_id, TaskDependency.depends_on_id)
+            .where(TaskDependency.task_id.in_(task_ids))
+        )
+        dep_map = defaultdict(list)
+        for tid, did in edge_result:
+            dep_map[tid].append(did)
+    else:
+        dep_map = {}
 
     loc_result = await db.execute(
         select(Location)
@@ -53,9 +69,16 @@ async def sync_pull(
     )
     cursor = max(all_versions) if all_versions else since
 
+    # Attach depends_on to each task for serialization
+    task_dicts = []
+    for t in tasks:
+        td = {c.key: getattr(t, c.key) for c in t.__table__.columns}
+        td["depends_on"] = dep_map.get(t.id, [])
+        task_dicts.append(td)
+
     return SyncPullResponse(
         captures=captures,
-        tasks=tasks,
+        tasks=task_dicts,
         locations=locations,
         location_types=location_types,
         cursor=cursor,
