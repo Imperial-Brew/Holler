@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import STUB_USER_ID
 from app.database import get_db
 from app.models.capture import Capture
+from app.models.location import Location
 from app.models.task import Task
 from app.schemas.task import RegisterRequest, RegisterResponse
 
@@ -39,11 +40,20 @@ async def register_capture(
         response.status_code = 200
         return RegisterResponse(task=task, capture=capture)
 
-    # 3. Atomic: create task + flip capture in one transaction
+    # 3. Validate location_id if provided
+    if body.location_id is not None:
+        loc_result = await db.execute(
+            select(Location).where(Location.id == body.location_id)
+        )
+        if loc_result.scalar_one_or_none() is None:
+            raise HTTPException(status_code=422, detail="location_id does not reference a valid location")
+
+    # 4. Atomic: create task + flip capture in one transaction
     task = Task(
         id=uuid.uuid4(),
         title=body.title,
         due_date=body.due_date,
+        location_id=body.location_id,
         origin_capture_id=capture.id,
         created_by=STUB_USER_ID,
     )

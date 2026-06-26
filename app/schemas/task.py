@@ -33,6 +33,7 @@ class TaskRead(BaseModel):
 class RegisterRequest(BaseModel):
     title: str
     due_date: Optional[date] = None
+    location_id: Optional[uuid.UUID] = None
 
 
 class RegisterResponse(BaseModel):

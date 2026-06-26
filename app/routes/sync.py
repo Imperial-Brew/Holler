@@ -4,6 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.capture import Capture
+from app.models.location import Location
+from app.models.location_type import LocationType
 from app.models.task import Task
 from app.schemas.sync import SyncPullResponse
 
@@ -29,7 +31,32 @@ async def sync_pull(
     )
     tasks = task_result.scalars().all()
 
-    all_versions = [c.row_version for c in captures] + [t.row_version for t in tasks]
+    loc_result = await db.execute(
+        select(Location)
+        .where(Location.row_version > since)
+        .order_by(Location.row_version.asc())
+    )
+    locations = loc_result.scalars().all()
+
+    lt_result = await db.execute(
+        select(LocationType)
+        .where(LocationType.row_version > since)
+        .order_by(LocationType.row_version.asc())
+    )
+    location_types = lt_result.scalars().all()
+
+    all_versions = (
+        [c.row_version for c in captures]
+        + [t.row_version for t in tasks]
+        + [l.row_version for l in locations]
+        + [lt.row_version for lt in location_types]
+    )
     cursor = max(all_versions) if all_versions else since
 
-    return SyncPullResponse(captures=captures, tasks=tasks, cursor=cursor)
+    return SyncPullResponse(
+        captures=captures,
+        tasks=tasks,
+        locations=locations,
+        location_types=location_types,
+        cursor=cursor,
+    )
