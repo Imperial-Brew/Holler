@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, String, Text
+from sqlalchemy import BigInteger, Boolean, DateTime, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -17,6 +17,9 @@ class User(Base):
     role: Mapped[str] = mapped_column(
         String, nullable=False, default="member",
         info={"check": "role IN ('owner','member','requester')"},
+    )
+    row_version: Mapped[int] = mapped_column(
+        BigInteger, server_default=text("nextval('row_version_seq')"), nullable=False,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False,
