@@ -1,15 +1,15 @@
 import uuid
-from collections import defaultdict
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select, text, delete
+from sqlalchemy import delete, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.task import Task
 from app.models.task_dependency import TaskDependency
+from app.routes.task_helpers import load_task_read
 from app.schemas.task import TaskRead
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -17,20 +17,6 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 class AddDependencyRequest(BaseModel):
     depends_on_id: uuid.UUID
-
-
-async def _load_task_read(session: AsyncSession, task_id: uuid.UUID) -> TaskRead:
-    """Load a task and its depends_on list, return as TaskRead dict."""
-    result = await session.execute(select(Task).where(Task.id == task_id))
-    task = result.scalar_one()
-    edge_result = await session.execute(
-        select(TaskDependency.depends_on_id)
-        .where(TaskDependency.task_id == task_id)
-    )
-    depends_on = [row[0] for row in edge_result]
-    td = {c.key: getattr(task, c.key) for c in task.__table__.columns}
-    td["depends_on"] = depends_on
-    return td
 
 
 @router.post("/{task_id}/dependencies", response_model=TaskRead)
@@ -72,7 +58,7 @@ async def add_dependency(
     await db.commit()
 
     # Refresh to get bumped row_version
-    return await _load_task_read(db, task_id)
+    return await load_task_read(db, task_id)
 
 
 @router.delete("/{task_id}/dependencies/{depends_on_id}", response_model=TaskRead)
@@ -90,4 +76,4 @@ async def remove_dependency(
     )
     await db.commit()
 
-    return await _load_task_read(db, task_id)
+    return await load_task_read(db, task_id)

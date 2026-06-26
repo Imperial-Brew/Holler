@@ -8,6 +8,7 @@ from app.routes.sync import router as sync_router
 from app.routes.register import router as register_router
 from app.routes.locations import router as locations_router
 from app.routes.dependencies import router as dependencies_router
+from app.routes.tasks import router as tasks_router
 
 app = FastAPI(title="Holler", version="0.1.0")
 
@@ -25,6 +26,7 @@ app.include_router(sync_router)
 app.include_router(register_router)
 app.include_router(locations_router)
 app.include_router(dependencies_router)
+app.include_router(tasks_router)
 
 
 @app.get("/")

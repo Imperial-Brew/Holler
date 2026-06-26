@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, date
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -29,6 +29,13 @@ class TaskRead(BaseModel):
     deleted_at: Optional[datetime]
     row_version: int
     depends_on: list[uuid.UUID] = []
+
+
+class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    due_date: Optional[date] = None
+    location_id: Optional[uuid.UUID] = None
+    status: Optional[Literal["open", "in_progress", "done", "cancelled"]] = None
 
 
 class RegisterRequest(BaseModel):
