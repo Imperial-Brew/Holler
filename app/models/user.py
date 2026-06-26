@@ -1,9 +1,10 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import BigInteger, Boolean, DateTime, String, Text, text
+from sqlalchemy import BigInteger, Boolean, DateTime, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.schema import FetchedValue
 
 from app.database import Base
 
@@ -19,7 +20,7 @@ class User(Base):
         info={"check": "role IN ('owner','member','requester')"},
     )
     row_version: Mapped[int] = mapped_column(
-        BigInteger, server_default=text("nextval('row_version_seq')"), nullable=False,
+        BigInteger, FetchedValue(), server_onupdate=FetchedValue(), nullable=False,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False,
