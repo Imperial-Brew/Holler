@@ -21,4 +21,15 @@ db.version(3).stores({
   meta: "key",
 });
 
+db.version(4).stores({
+  captures: "id",
+  tasks: "id, status, location",
+  locations: "id",
+  location_types: "id",
+  goals: "id, parentId",
+  taskGoals: "[taskId+goalId], *goalId",
+  taskDependencies: "[taskId+dependsOnTaskId]",
+  meta: "key",
+});
+
 export default db;

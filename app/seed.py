@@ -1,4 +1,4 @@
-"""Seed the stub owner user and starter location types. Idempotent — safe to re-run."""
+"""Seed the stub owner user, starter location types, and goal hierarchy. Idempotent — safe to re-run."""
 import asyncio
 import uuid
 
@@ -9,8 +9,10 @@ from app.auth import STUB_USER_ID
 from app.database import async_session
 from app.models.user import User
 from app.models.location_type import LocationType
+from app.models.goal import Goal
 
 LOCATION_TYPE_NAMESPACE = uuid.UUID("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+GOAL_NAMESPACE = uuid.UUID("b2c3d4e5-f6a7-8901-bcde-f12345678901")
 
 STARTER_LOCATION_TYPES = [
     ("pasture", 0),
@@ -57,6 +59,43 @@ async def seed():
             print(f"Seeded {seeded} location types.")
         else:
             print("All location types already exist — skipping.")
+
+        # Seed goal hierarchy (deterministic UUIDs)
+        # Tree: Move in > Weatherproof > Roof, Doors, Walls & gaps
+        #        Move in > Organize
+        #        Move in > Inventory
+        goal_tree = [
+            # (name, parent_name_or_None, rank)
+            ("Move in", None, 1),
+            ("Weatherproof", "Move in", 1),
+            ("Roof", "Weatherproof", 1),
+            ("Doors", "Weatherproof", 2),
+            ("Walls & gaps", "Weatherproof", 3),
+            ("Organize", "Move in", 2),
+            ("Inventory", "Move in", 3),
+        ]
+
+        # Build deterministic IDs: uuid5(GOAL_NAMESPACE, name)
+        goal_ids = {name: uuid.uuid5(GOAL_NAMESPACE, name) for name, _, _ in goal_tree}
+
+        seeded_goals = 0
+        for name, parent_name, rank in goal_tree:
+            goal_id = goal_ids[name]
+            existing = await session.execute(
+                select(Goal).where(Goal.id == goal_id)
+            )
+            if existing.scalar_one_or_none() is not None:
+                continue
+            parent_id = goal_ids[parent_name] if parent_name else None
+            goal = Goal(id=goal_id, name=name, parent_id=parent_id, rank=rank)
+            session.add(goal)
+            seeded_goals += 1
+
+        if seeded_goals:
+            await session.commit()
+            print(f"Seeded {seeded_goals} goals.")
+        else:
+            print("All goals already exist — skipping.")
 
 
 if __name__ == "__main__":
