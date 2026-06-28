@@ -1,0 +1,45 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-holler}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-holler}
+      POSTGRES_DB: ${POSTGRES_DB:-holler}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-holler}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-holler}:${POSTGRES_PASSWORD:-holler}@db:5432/${POSTGRES_DB:-holler}
+      DATABASE_URL_SYNC: postgresql+psycopg2://${POSTGRES_USER:-holler}:${POSTGRES_PASSWORD:-holler}@db:5432/${POSTGRES_DB:-holler}
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost}
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_URL: /api
+        VITE_AUTH_TOKEN: ${VITE_AUTH_TOKEN:-stub-token}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${APP_PORT:-80}:80"
+
+volumes:
+  pgdata:
