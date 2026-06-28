@@ -61,4 +61,5 @@ Phases 0–4 are in active development. See `Holler_build_plan.md` for the roadm
 
 ## Tests & linting
 
-None yet.
+- Tests: none yet.
+- Lint: frontend uses oxlint (`cd frontend && npx oxlint`); backend has no linter yet.

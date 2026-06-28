@@ -1,0 +1,31 @@
+# Junie must not read or modify these. Same syntax as .gitignore.
+
+# Secrets / environment
+.env
+*.env.local
+*.pem
+*.key
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Frontend build + deps
+node_modules/
+frontend/dist/
+frontend/build/
+frontend/node_modules/
+
+# Local databases / data dumps
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+
+# IDE
+.idea/
+
+# OS noise
+.DS_Store
+Thumbs.db

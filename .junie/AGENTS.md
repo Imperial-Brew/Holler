@@ -28,7 +28,8 @@ Offline-first property/business task-management app.
 | New migration | `alembic revision --autogenerate -m "message"` |
 | Run backend (dev) | `uvicorn main:app --reload` |
 | Run tests | none yet — do not invent a test suite; ask before adding one |
-| Lint / format | none yet |
+| Lint (frontend) | `cd frontend && npx oxlint` (config: `frontend/.oxlintrc.json`) |
+| Lint (backend) | none yet |
 | Install frontend deps | `cd frontend && npm install` |
 | Run frontend (dev) | `cd frontend && npm run dev` |
 
