@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "change-me-in-production"
     CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "allow"}
 
 
 settings = Settings()
