@@ -1,7 +1,5 @@
 import db from "./db";
-
-const API = import.meta.env.VITE_API_URL;
-const TOKEN = import.meta.env.VITE_AUTH_TOKEN;
+import { authFetch } from "../holler_auth_client";
 
 let syncing = false;
 
@@ -35,11 +33,10 @@ export async function flush() {
         location_hint: row.location_hint,
         source: row.source,
       };
-      const res = await fetch(`${API}/captures`, {
+      const res = await authFetch("/captures", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${TOKEN}`,
         },
         body: JSON.stringify(body),
       });
@@ -54,9 +51,7 @@ export async function flush() {
 }
 
 export async function pull(since) {
-  const res = await fetch(`${API}/sync/pull?since=${since}`, {
-    headers: { Authorization: `Bearer ${TOKEN}` },
-  });
+  const res = await authFetch(`/sync/pull?since=${since}`);
   if (!res.ok) throw new Error(`pull failed: ${res.status}`);
   return res.json();
 }
@@ -109,11 +104,10 @@ export async function createLocation({ name, type_id, parent_id, code }) {
   if (parent_id) body.parent_id = parent_id;
   if (code) body.code = code;
 
-  const res = await fetch(`${API}/locations`, {
+  const res = await authFetch("/locations", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${TOKEN}`,
     },
     body: JSON.stringify(body),
   });
@@ -127,11 +121,10 @@ export async function createLocation({ name, type_id, parent_id, code }) {
 }
 
 export async function registerCapture(captureId, { title, due_date, location_id }) {
-  const res = await fetch(`${API}/captures/${captureId}/register`, {
+  const res = await authFetch(`/captures/${captureId}/register`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${TOKEN}`,
     },
     body: JSON.stringify({ title, due_date: due_date || null, location_id: location_id || null }),
   });
@@ -146,11 +139,10 @@ export async function registerCapture(captureId, { title, due_date, location_id 
 }
 
 export async function setTaskStatus(id, status) {
-  const res = await fetch(`${API}/tasks/${id}`, {
+  const res = await authFetch(`/tasks/${id}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${TOKEN}`,
     },
     body: JSON.stringify({ status }),
   });
@@ -164,9 +156,8 @@ export async function setTaskStatus(id, status) {
 }
 
 export async function deleteTask(id) {
-  const res = await fetch(`${API}/tasks/${id}`, {
+  const res = await authFetch(`/tasks/${id}`, {
     method: "DELETE",
-    headers: { Authorization: `Bearer ${TOKEN}` },
   });
   if (!res.ok) {
     const detail = await res.text();
@@ -176,11 +167,10 @@ export async function deleteTask(id) {
 }
 
 export async function addDependency(taskId, dependsOnId) {
-  const res = await fetch(`${API}/tasks/${taskId}/dependencies`, {
+  const res = await authFetch(`/tasks/${taskId}/dependencies`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${TOKEN}`,
     },
     body: JSON.stringify({ depends_on_id: dependsOnId }),
   });
@@ -197,9 +187,8 @@ export async function addDependency(taskId, dependsOnId) {
 }
 
 export async function removeDependency(taskId, dependsOnId) {
-  const res = await fetch(`${API}/tasks/${taskId}/dependencies/${dependsOnId}`, {
+  const res = await authFetch(`/tasks/${taskId}/dependencies/${dependsOnId}`, {
     method: "DELETE",
-    headers: { Authorization: `Bearer ${TOKEN}` },
   });
   if (!res.ok) {
     const detail = await res.text();

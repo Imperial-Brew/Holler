@@ -27,6 +27,9 @@ services:
       DATABASE_URL_SYNC: postgresql+psycopg2://${POSTGRES_USER:-holler}:${POSTGRES_PASSWORD:-holler}@db:5432/${POSTGRES_DB:-holler}
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost}
+      HOLLER_JWT_SECRET: ${HOLLER_JWT_SECRET}
+      HOLLER_USER: ${HOLLER_USER}
+      HOLLER_PW_HASH: ${HOLLER_PW_HASH}
 
   frontend:
     build:

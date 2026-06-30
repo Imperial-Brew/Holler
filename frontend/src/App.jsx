@@ -5,6 +5,8 @@ import { createCapture, registerCapture, sync, setTaskStatus, deleteTask, addDep
 import LocationPicker from "./components/LocationPicker";
 import AddPlaceForm from "./components/AddPlaceForm";
 import TaskPicker from "./components/TaskPicker";
+import Login from "./components/Login";
+import { isLoggedIn, logout } from "./holler_auth_client";
 
 function DependencyEditor({ taskId, dependsOnIds, taskMap, online }) {
   const [error, setError] = useState(null);
@@ -198,6 +200,13 @@ export default function App() {
   const [online, setOnline] = useState(navigator.onLine);
   const [error, setError] = useState(null);
   const [readyOnly, setReadyOnly] = useState(false);
+  const [authenticated, setAuthenticated] = useState(isLoggedIn());
+
+  useEffect(() => {
+    const handleUnauthorized = () => setAuthenticated(false);
+    window.addEventListener("holler:unauthorized", handleUnauthorized);
+    return () => window.removeEventListener("holler:unauthorized", handleUnauthorized);
+  }, []);
 
   const captures = useLiveQuery(() => db.captures.toArray(), [], []);
   const tasks = useLiveQuery(() => db.tasks.toArray(), [], []);
@@ -279,9 +288,16 @@ export default function App() {
     }
   };
 
+  if (!authenticated) {
+    return <Login onLoginSuccess={() => setAuthenticated(true)} />;
+  }
+
   return (
     <div style={{ maxWidth: "800px", margin: "0 auto", padding: "1rem" }}>
-      <h1>Holler</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h1>Holler</h1>
+        <button onClick={() => { logout(); setAuthenticated(false); }}>Logout</button>
+      </div>
       <p>
         {online ? "🟢 Online" : "🔴 Offline"} | Cursor: {useLiveQuery(() => db.meta.get("cursor"), [])?.value ?? 0}{" "}
         <button onClick={handleSync}>Sync</button>
