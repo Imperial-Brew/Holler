@@ -1,4 +1,4 @@
-:80 {
+(holler_routing) {
 	handle_path /api/* {
 		reverse_proxy backend:8000
 	}
@@ -8,4 +8,18 @@
 		try_files {path} /index.html
 		file_server
 	}
+}
+
+:80 {
+	import holler_routing
+}
+
+holler.drabapps.com {
+	tls {
+		dns porkbun {
+			api_key {env.PORKBUN_API_KEY}
+			api_secret_key {env.PORKBUN_API_SECRET_KEY}
+		}
+	}
+	import holler_routing
 }
