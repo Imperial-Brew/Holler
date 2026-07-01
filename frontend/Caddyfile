@@ -14,7 +14,7 @@
 	import holler_routing
 }
 
-holler.drabapps.com {
+holler.drabapps.com:14443 {
 	tls {
 		dns porkbun {
 			api_key {env.PORKBUN_API_KEY}

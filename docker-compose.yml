@@ -43,10 +43,13 @@ services:
       - backend
     ports:
       - "${APP_PORT:-80}:80"
-      - "443:443"
+      - "14443:14443"
+    volumes:
+      - caddy_data:/data
     environment:
       PORKBUN_API_KEY: ${PORKBUN_API_KEY:-}
       PORKBUN_API_SECRET_KEY: ${PORKBUN_API_SECRET_KEY:-}
 
 volumes:
   pgdata:
+  caddy_data:
