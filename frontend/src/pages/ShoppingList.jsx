@@ -1,9 +1,13 @@
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import db from "../lib/db";
-import { sync } from "../lib/sync";
+import { sync, receiveMaterial } from "../lib/sync";
 
 export default function ShoppingList() {
+  // materialId currently being confirmed, and the entered quantity.
+  const [buyingId, setBuyingId] = useState(null);
+  const [buyQty, setBuyQty] = useState("");
+
   // Re-sync on navigation so the list reflects other devices' changes.
   useEffect(() => {
     if (navigator.onLine) {
@@ -60,6 +64,25 @@ export default function ShoppingList() {
     .filter((r) => r.shortfall > 0)
     .sort((a, b) => a.name.localeCompare(b.name));
 
+  const startBuying = (row) => {
+    setBuyingId(row.materialId);
+    setBuyQty(String(row.shortfall)); // prefill with what's short; editable
+  };
+
+  const cancelBuying = () => {
+    setBuyingId(null);
+    setBuyQty("");
+  };
+
+  const confirmBuying = async (materialId) => {
+    const qty = parseFloat(buyQty);
+    if (isNaN(qty) || qty <= 0) return;
+    // Writes a local ledger entry (works offline); once on-hand covers what's
+    // needed the row drops off the list automatically.
+    await receiveMaterial(materialId, { qty });
+    cancelBuying();
+  };
+
   return (
     <div className="shopping-list-page">
       <h2>Shopping List</h2>
@@ -80,6 +103,7 @@ export default function ShoppingList() {
               <th style={{ padding: "0.5rem" }}>Needed</th>
               <th style={{ padding: "0.5rem" }}>On Hand</th>
               <th style={{ padding: "0.5rem" }}>Buy</th>
+              <th style={{ padding: "0.5rem" }}></th>
             </tr>
           </thead>
           <tbody>
@@ -90,6 +114,36 @@ export default function ShoppingList() {
                 <td style={{ padding: "0.5rem" }}>{r.onHand} {r.unit}</td>
                 <td style={{ padding: "0.5rem", color: "#f44336", fontWeight: "bold" }}>
                   {r.shortfall} {r.unit}
+                </td>
+                <td style={{ padding: "0.5rem", textAlign: "right" }}>
+                  {buyingId === r.materialId ? (
+                    <span style={{ display: "inline-flex", gap: "0.25rem", alignItems: "center" }}>
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        autoFocus
+                        value={buyQty}
+                        onChange={(e) => setBuyQty(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") confirmBuying(r.materialId);
+                          if (e.key === "Escape") cancelBuying();
+                        }}
+                        style={{ width: "70px", padding: "0.2rem" }}
+                      />
+                      <span style={{ color: "gray", fontSize: "0.85rem" }}>{r.unit}</span>
+                      <button onClick={() => confirmBuying(r.materialId)} style={{ padding: "0.2rem 0.5rem" }}>
+                        Save
+                      </button>
+                      <button onClick={cancelBuying} style={{ padding: "0.2rem 0.5rem" }}>
+                        ✕
+                      </button>
+                    </span>
+                  ) : (
+                    <button onClick={() => startBuying(r)} style={{ padding: "0.2rem 0.6rem" }}>
+                      Got it
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

@@ -54,6 +54,8 @@ class TaskMaterialRead(BaseModel):
 class MaterialReceive(BaseModel):
     qty: float
     note: Optional[str] = None
+    # Client-generated id so an offline receive can be pushed idempotently.
+    id: Optional[uuid.UUID] = None
 
 class MaterialLeftover(BaseModel):
     material_id: uuid.UUID
