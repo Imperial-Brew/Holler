@@ -63,6 +63,7 @@ export async function applyPull(response) {
     db.tasks,
     db.locations,
     db.location_types,
+    db.tools,
     db.meta,
     async () => {
       for (const capture of response.captures) {
@@ -91,6 +92,13 @@ export async function applyPull(response) {
           await db.location_types.delete(lt.id);
         } else {
           await db.location_types.put(lt);
+        }
+      }
+      for (const tool of response.tools ?? []) {
+        if (tool.deleted) {
+          await db.tools.delete(tool.id);
+        } else {
+          await db.tools.put(tool);
         }
       }
       await db.meta.put({ key: "cursor", value: response.cursor });
@@ -135,6 +143,7 @@ export async function registerCapture(captureId, { title, due_date, location_id 
   const { task, capture } = await res.json();
   await db.tasks.put(task);
   await db.captures.put({ ...capture, pendingPush: false });
+  sync(); // pull updates
   return { task, capture };
 }
 
@@ -152,6 +161,7 @@ export async function setTaskStatus(id, status) {
   }
   const task = await res.json();
   await db.tasks.put(task);
+  sync(); // pull updates
   return task;
 }
 
@@ -164,6 +174,84 @@ export async function deleteTask(id) {
     throw new Error(`Delete task failed (${res.status}): ${detail}`);
   }
   await db.tasks.delete(id);
+  sync(); // pull updates
+}
+
+export async function createJob({ title }) {
+  const res = await authFetch("/jobs/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title })
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Create job failed (${res.status}): ${detail}`);
+  }
+  const job = await res.json();
+  sync(); // pull updates (milestone task created on server)
+  return job;
+}
+
+export async function createJobTask(jobId, { title, depends_on_ids, required_tool_ids }) {
+  const res = await authFetch(`/jobs/${jobId}/tasks/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title, depends_on_ids, required_tool_ids })
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Create job task failed (${res.status}): ${detail}`);
+  }
+  const job = await res.json();
+  sync(); // pull updates
+  return job;
+}
+
+export async function createTool({ name, location_id }) {
+  const res = await authFetch("/tools/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ name, location_id }),
+  });
+
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Create tool failed (${res.status}): ${detail}`);
+  }
+  const tool = await res.json();
+  await db.tools.put(tool);
+  sync();
+  return tool;
+}
+
+export async function receiveMaterial(materialId, { qty }) {
+  const res = await authFetch(`/materials/${materialId}/receive/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ qty })
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Receive material failed (${res.status}): ${detail}`);
+  }
+  sync(); // pull updates to refresh on-hand
+}
+
+export async function reconcileJobMaterials(jobId, { materials }) {
+  const res = await authFetch(`/jobs/${jobId}/reconcile-materials/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ materials })
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Reconciliation failed (${res.status}): ${detail}`);
+  }
+  const job = await res.json();
+  sync(); // pull updates
+  return job;
 }
 
 export async function addDependency(taskId, dependsOnId) {
@@ -183,6 +271,7 @@ export async function addDependency(taskId, dependsOnId) {
   }
   const task = await res.json();
   await db.tasks.put(task);
+  sync(); // pull updates
   return task;
 }
 
@@ -196,6 +285,7 @@ export async function removeDependency(taskId, dependsOnId) {
   }
   const task = await res.json();
   await db.tasks.put(task);
+  sync(); // pull updates
   return task;
 }
 

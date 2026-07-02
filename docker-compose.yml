@@ -46,6 +46,7 @@ services:
       - "14443:14443"
     volumes:
       - caddy_data:/data
+      - caddy_config:/config
     environment:
       PORKBUN_API_KEY: ${PORKBUN_API_KEY:-}
       PORKBUN_API_SECRET_KEY: ${PORKBUN_API_SECRET_KEY:-}
@@ -53,3 +54,4 @@ services:
 volumes:
   pgdata:
   caddy_data:
+  caddy_config:

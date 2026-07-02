@@ -32,4 +32,28 @@ db.version(4).stores({
   meta: "key",
 });
 
+db.version(5).stores({
+  captures: "id",
+  tasks: "id, status, location",
+  locations: "id",
+  location_types: "id",
+  goals: "id, parentId",
+  taskGoals: "[taskId+goalId], *goalId",
+  taskDependencies: "[taskId+dependsOnTaskId]",
+  tools: "id",
+  meta: "key",
+});
+
+db.version(6).stores({
+  captures: "id",
+  tasks: "id, status, location",
+  locations: "id",
+  location_types: "id",
+  goals: "id, parentId",
+  taskGoals: "[taskId+goalId], *goalId",
+  taskDependencies: "[taskId+dependsOnTaskId]",
+  tools: "id, name",
+  meta: "key",
+});
+
 export default db;

@@ -10,6 +10,7 @@ from app.models.location import Location
 from app.models.location_type import LocationType
 from app.models.task import Task
 from app.models.task_dependency import TaskDependency
+from app.models.tool import Tool
 from app.schemas.sync import SyncPullResponse
 
 router = APIRouter(prefix="/sync", tags=["sync"])
@@ -61,11 +62,19 @@ async def sync_pull(
     )
     location_types = lt_result.scalars().all()
 
+    tool_result = await db.execute(
+        select(Tool)
+        .where(Tool.row_version > since)
+        .order_by(Tool.row_version.asc())
+    )
+    tools = tool_result.scalars().all()
+
     all_versions = (
         [c.row_version for c in captures]
         + [t.row_version for t in tasks]
         + [l.row_version for l in locations]
         + [lt.row_version for lt in location_types]
+        + [tl.row_version for tl in tools]
     )
     cursor = max(all_versions) if all_versions else since
 
@@ -81,5 +90,6 @@ async def sync_pull(
         tasks=task_dicts,
         locations=locations,
         location_types=location_types,
+        tools=tools,
         cursor=cursor,
     )

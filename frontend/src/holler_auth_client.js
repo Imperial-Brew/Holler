@@ -5,7 +5,9 @@
 // your protected views still read from Dexie when you're offline, and sync
 // against the backend when you're back online.
 
-const API = import.meta.env.VITE_API_URL || ""; // e.g. "https://146.70.x.x:PORT"
+const API = (import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL.startsWith("/"))
+  ? import.meta.env.VITE_API_URL
+  : (import.meta.env.DEV ? (import.meta.env.VITE_API_URL || "") : "/api");
 const TOKEN_KEY = "holler.token";
 
 // --- Token storage ---------------------------------------------------------

@@ -1,6 +1,9 @@
 (holler_routing) {
 	handle_path /api/* {
-		reverse_proxy backend:8000
+		reverse_proxy backend:8000 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Forwarded-Prefix /api
+		}
 	}
 
 	handle {
@@ -20,6 +23,7 @@ holler.drabapps.com:14443 {
 			api_key {env.PORKBUN_API_KEY}
 			api_secret_key {env.PORKBUN_API_SECRET_KEY}
 		}
+		resolvers 1.1.1.1
 	}
 	import holler_routing
 }
