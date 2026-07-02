@@ -69,6 +69,43 @@ export async function flush() {
   }
 }
 
+// Receives are queued locally (offline "Got it" in the store) and pushed here.
+// The client-generated id makes the server insert idempotent, so a retried
+// flush never double-counts the ledger.
+export async function flushMaterialTransactions() {
+  const pending = await db.material_transactions
+    .filter((t) => t.pendingPush)
+    .toArray();
+
+  for (const row of pending) {
+    try {
+      const res = await authFetch(`/materials/${row.material_id}/receive/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: row.id, qty: Number(row.delta) }),
+      });
+      if (!res.ok) {
+        if (isPermanentRejection(res.status)) {
+          const detail = await res.text().catch(() => "");
+          console.warn(`flush: receive ${row.id} rejected (${res.status}), quarantining`, detail);
+          await db.material_transactions.put({
+            ...row,
+            pendingPush: false,
+            pushError: `Rejected by server (${res.status})`,
+          });
+          continue;
+        }
+        throw new Error(`receive POST failed: ${res.status}`);
+      }
+      const confirmed = await res.json();
+      await db.material_transactions.put({ ...confirmed, pendingPush: false, pushError: null });
+    } catch (e) {
+      console.warn("flushMaterialTransactions: stopping on error", e);
+      break;
+    }
+  }
+}
+
 export async function pull(since) {
   const res = await authFetch(`/sync/pull?since=${since}`);
   if (!res.ok) throw new Error(`pull failed: ${res.status}`);
@@ -291,16 +328,27 @@ export async function createMaterial({ name, unit, reorder_point }) {
 }
 
 export async function receiveMaterial(materialId, { qty }) {
-  const res = await authFetch(`/materials/${materialId}/receive/`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ qty })
-  });
-  if (!res.ok) {
-    const detail = await res.text();
-    throw new Error(`Receive material failed (${res.status}): ${detail}`);
+  // Offline-first: write the ledger entry locally so on-hand updates
+  // immediately (works in the store with no signal), then push when online.
+  const id = crypto.randomUUID();
+  const row = {
+    id,
+    material_id: materialId,
+    delta: qty,
+    reason: "received",
+    occurred_at: new Date().toISOString(),
+    created_at: new Date().toISOString(),
+    pendingPush: true,
+    pushError: null,
+  };
+  await db.material_transactions.put(row);
+
+  if (navigator.onLine) {
+    // Await the push so callers that re-read from the server (JobDetail) see
+    // it; the idempotent id makes a concurrent background flush harmless.
+    await flushMaterialTransactions();
   }
-  sync(); // pull updates to refresh on-hand
+  return row;
 }
 
 export async function reconcileJobMaterials(jobId, { materials }) {
@@ -358,6 +406,7 @@ export async function sync() {
   syncing = true;
   try {
     await flush();
+    await flushMaterialTransactions();
     const meta = await db.meta.get("cursor");
     const since = meta?.value ?? 0;
     const response = await pull(since);
