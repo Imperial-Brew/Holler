@@ -89,4 +89,23 @@ db.version(8)
   })
   .upgrade((tx) => tx.table("meta").put({ key: "cursor", value: 0 }));
 
+// v9: materials catalog + append-only transaction ledger (on-hand is computed
+// client-side by summing deltas). Cursor reset per the rule above.
+db.version(9)
+  .stores({
+    captures: "id",
+    tasks: "id, status, location, job_id",
+    locations: "id",
+    location_types: "id",
+    goals: "id, parentId",
+    taskGoals: "[taskId+goalId], *goalId",
+    taskDependencies: "[taskId+dependsOnTaskId]",
+    tools: "id, name",
+    jobs: "id",
+    materials: "id, name",
+    material_transactions: "id, material_id",
+    meta: "key",
+  })
+  .upgrade((tx) => tx.table("meta").put({ key: "cursor", value: 0 }));
+
 export default db;

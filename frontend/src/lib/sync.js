@@ -84,6 +84,8 @@ export async function applyPull(response) {
     db.location_types,
     db.tools,
     db.jobs,
+    db.materials,
+    db.material_transactions,
     db.meta,
     async () => {
       for (const capture of response.captures) {
@@ -127,6 +129,17 @@ export async function applyPull(response) {
         } else {
           await db.jobs.put(job);
         }
+      }
+      for (const material of response.materials ?? []) {
+        if (material.deleted) {
+          await db.materials.delete(material.id);
+        } else {
+          await db.materials.put(material);
+        }
+      }
+      // Ledger rows are append-only — no delete branch.
+      for (const mt of response.material_transactions ?? []) {
+        await db.material_transactions.put(mt);
       }
       await db.meta.put({ key: "cursor", value: response.cursor });
     }
@@ -251,6 +264,22 @@ export async function createTool({ name, location_id }) {
   await db.tools.put(tool);
   sync();
   return tool;
+}
+
+export async function createMaterial({ name, unit, reorder_point }) {
+  const res = await authFetch("/materials/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, unit, reorder_point: reorder_point ?? null }),
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Create material failed (${res.status}): ${detail}`);
+  }
+  const material = await res.json();
+  await db.materials.put(material);
+  sync();
+  return material;
 }
 
 export async function receiveMaterial(materialId, { qty }) {
