@@ -1,28 +1,40 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { authFetch } from "../holler_auth_client";
-import { createJob } from "../lib/sync";
+import { useLiveQuery } from "dexie-react-hooks";
+import db from "../lib/db";
+import { createJob, sync } from "../lib/sync";
 
 export default function JobsList() {
-  const [jobs, setJobs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [newJobTitle, setNewJobTitle] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
 
+  // Re-sync on navigation so another device's changes show up; the Dexie
+  // cache below still renders immediately (and offline).
   useEffect(() => {
-    authFetch("/jobs/")
-      .then(res => res.json())
-      .then(data => {
-        setJobs(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        setError(err.message);
-        setLoading(false);
-      });
+    if (navigator.onLine) {
+      sync();
+    }
   }, []);
+
+  const rawJobs = useLiveQuery(() => db.jobs.toArray(), []);
+  const tasks = useLiveQuery(() => db.tasks.toArray(), [], []);
+
+  // Display status comes from the milestone task (same derivation the server
+  // uses); the jobs.status column is only a fallback until tasks sync.
+  const milestoneStatus = {};
+  for (const t of tasks ?? []) {
+    if (t.is_milestone && t.job_id && !t.deleted) {
+      milestoneStatus[t.job_id] = t.status;
+    }
+  }
+
+  const jobs = (rawJobs ?? [])
+    .filter((j) => !j.deleted)
+    .map((j) => ({ ...j, status: milestoneStatus[j.id] ?? j.status }))
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  const loading = rawJobs === undefined;
 
   const handleCreateJob = async (e) => {
     e.preventDefault();
@@ -39,7 +51,6 @@ export default function JobsList() {
   };
 
   if (loading) return <div>Loading jobs...</div>;
-  if (error) return <div style={{ color: "red" }}>Error: {error}</div>;
 
   return (
     <div className="jobs-list">

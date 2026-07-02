@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import db from "../lib/db";
-import { createCapture, registerCapture, sync, setTaskStatus, deleteTask, addDependency, removeDependency } from "../lib/sync";
+import { createCapture, registerCapture, setTaskStatus, deleteTask, addDependency, removeDependency } from "../lib/sync";
 import LocationPicker from "../components/LocationPicker";
 import TaskPicker from "../components/TaskPicker";
-import { authFetch } from "../holler_auth_client";
 
 function DependencyEditor({ taskId, dependsOnIds, taskMap, online }) {
   const [error, setError] = useState(null);
@@ -57,9 +57,10 @@ function DependencyEditor({ taskId, dependsOnIds, taskMap, online }) {
   );
 }
 
-function TaskCard({ task, taskMap, locMap, online, type }) {
+function TaskCard({ task, taskMap, locMap, jobMap, online, type }) {
   const [submitting, setSubmitting] = useState(false);
   const place = task.location_id ? locMap[task.location_id] : null;
+  const job = task.job_id ? jobMap[task.job_id] : null;
   const disabled = !online || submitting;
 
   const handleToggleStatus = async () => {
@@ -99,6 +100,21 @@ function TaskCard({ task, taskMap, locMap, online, type }) {
             <span style={{ marginLeft: "0.5rem", color: "gray" }}>
               📍 {place.name}{place.code ? ` [${place.code}]` : ""}
             </span>
+          )}
+          {task.job_id && (
+            <Link
+              to={`/jobs/${task.job_id}`}
+              style={{
+                marginLeft: "0.5rem",
+                fontSize: "0.8em",
+                padding: "0.1rem 0.4rem",
+                borderRadius: "10px",
+                border: "1px solid var(--border)",
+                textDecoration: "none",
+              }}
+            >
+              🔨 {job ? job.title : "Job"}
+            </Link>
           )}
         </div>
         <div>
@@ -197,16 +213,22 @@ export default function Board({ online, onSync }) {
   const captures = useLiveQuery(() => db.captures.toArray(), [], []);
   const tasks = useLiveQuery(() => db.tasks.toArray(), [], []);
   const locations = useLiveQuery(() => db.locations.toArray(), [], []);
+  const jobs = useLiveQuery(() => db.jobs.toArray(), [], []);
 
   const locMap = {};
   if (locations) for (const loc of locations) locMap[loc.id] = loc;
 
+  const jobMap = {};
+  if (jobs) for (const j of jobs) jobMap[j.id] = j;
+
   const toRegister = (captures ?? []).filter(
-    (c) => c.status === "pending" && !c.deleted && !c.pendingPush
+    (c) => c.status === "pending" && !c.deleted && !c.pendingPush && !c.pushError
   );
+  const failedCaptures = (captures ?? []).filter((c) => c.pushError && !c.deleted);
 
   const taskMap = {};
-  const activeTasks = (tasks ?? []).filter(t => !t.deleted);
+  // Milestone tasks are job bookkeeping — they live on the job page, not the board.
+  const activeTasks = (tasks ?? []).filter(t => !t.deleted && !t.is_milestone);
   for (const t of activeTasks) taskMap[t.id] = t;
 
   const ready = [];
@@ -264,6 +286,32 @@ export default function Board({ online, onSync }) {
         <button onClick={handleAdd}>Add</button>
       </div>
 
+      {failedCaptures.length > 0 && (
+        <div style={{ marginBottom: "2rem" }}>
+          <h2 style={{ color: "red" }}>Failed to Sync</h2>
+          <ul style={{ listStyle: "none", padding: 0 }}>
+            {failedCaptures.map((c) => (
+              <li key={c.id} style={{ marginBottom: "0.5rem", padding: "0.5rem", border: "1px solid red", borderRadius: "4px" }}>
+                <strong>{c.raw_text}</strong>
+                <span style={{ color: "red", marginLeft: "0.5rem", fontSize: "0.9em" }}>{c.pushError}</span>
+                <button
+                  onClick={() => db.captures.put({ ...c, pendingPush: true, pushError: null })}
+                  style={{ marginLeft: "0.5rem" }}
+                >
+                  Retry
+                </button>
+                <button
+                  onClick={() => confirm("Discard this capture? It was never saved to the server.") && db.captures.delete(c.id)}
+                  style={{ marginLeft: "0.25rem" }}
+                >
+                  Discard
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {toRegister.length > 0 && (
         <div style={{ marginBottom: "2rem" }}>
           <h2>To Register</h2>
@@ -294,7 +342,7 @@ export default function Board({ online, onSync }) {
         <h2>Ready</h2>
         {ready.length === 0 ? <p style={{ color: "gray" }}>Nothing ready.</p> : (
           ready.map(t => (
-            <TaskCard key={t.id} task={t} taskMap={taskMap} locMap={locMap} online={online} type="ready" />
+            <TaskCard key={t.id} task={t} taskMap={taskMap} locMap={locMap} jobMap={jobMap} online={online} type="ready" />
           ))
         )}
       </section>
@@ -305,7 +353,7 @@ export default function Board({ online, onSync }) {
             <h2>Blocked</h2>
             {blocked.length === 0 ? <p style={{ color: "gray" }}>Nothing blocked.</p> : (
               blocked.map(t => (
-                <TaskCard key={t.id} task={t} taskMap={taskMap} locMap={locMap} online={online} type="blocked" />
+                <TaskCard key={t.id} task={t} taskMap={taskMap} locMap={locMap} jobMap={jobMap} online={online} type="blocked" />
               ))
             )}
           </section>
@@ -314,7 +362,7 @@ export default function Board({ online, onSync }) {
             <h2>Done</h2>
             {done.length === 0 ? <p style={{ color: "gray" }}>Nothing done yet.</p> : (
               done.map(t => (
-                <TaskCard key={t.id} task={t} taskMap={taskMap} locMap={locMap} online={online} type="done" />
+                <TaskCard key={t.id} task={t} taskMap={taskMap} locMap={locMap} jobMap={jobMap} online={online} type="done" />
               ))
             )}
           </section>

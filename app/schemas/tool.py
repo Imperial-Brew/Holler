@@ -12,6 +12,8 @@ class ToolRead(BaseModel):
     location_id: Optional[uuid.UUID] = None
     created_at: datetime
     updated_at: datetime
+    deleted: bool = False
+    deleted_at: Optional[datetime] = None
     row_version: int
 
 class ToolCreate(BaseModel):

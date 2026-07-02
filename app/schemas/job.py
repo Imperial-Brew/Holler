@@ -11,6 +11,25 @@ class JobRead(BaseModel):
     status: str
     created_at: datetime
 
+
+class JobSyncRead(BaseModel):
+    """Full jobs row for /sync/pull. The status column here is the trigger-
+    maintained one; clients derive display status from the milestone task."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    title: str
+    status: str
+    location_id: Optional[uuid.UUID]
+    priority: Optional[int]
+    due_date: Optional[date]
+    created_by: Optional[uuid.UUID]
+    created_at: datetime
+    updated_at: datetime
+    deleted: bool
+    deleted_at: Optional[datetime]
+    row_version: int
+
 class JobTaskRead(BaseModel):
     id: uuid.UUID
     title: str

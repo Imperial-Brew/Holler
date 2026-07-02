@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.capture import Capture
+from app.models.job import Job
 from app.models.location import Location
 from app.models.location_type import LocationType
 from app.models.task import Task
@@ -69,12 +70,20 @@ async def sync_pull(
     )
     tools = tool_result.scalars().all()
 
+    job_result = await db.execute(
+        select(Job)
+        .where(Job.row_version > since)
+        .order_by(Job.row_version.asc())
+    )
+    jobs = job_result.scalars().all()
+
     all_versions = (
         [c.row_version for c in captures]
         + [t.row_version for t in tasks]
         + [l.row_version for l in locations]
         + [lt.row_version for lt in location_types]
         + [tl.row_version for tl in tools]
+        + [j.row_version for j in jobs]
     )
     cursor = max(all_versions) if all_versions else since
 
@@ -91,5 +100,6 @@ async def sync_pull(
         locations=locations,
         location_types=location_types,
         tools=tools,
+        jobs=jobs,
         cursor=cursor,
     )

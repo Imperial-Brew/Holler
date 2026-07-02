@@ -21,6 +21,8 @@ class TaskRead(BaseModel):
     recurrence_rule: Optional[str]
     series_id: Optional[uuid.UUID]
     origin_capture_id: Optional[uuid.UUID]
+    job_id: Optional[uuid.UUID] = None
+    is_milestone: bool = False
     created_by: uuid.UUID
     created_at: datetime
     updated_at: datetime
