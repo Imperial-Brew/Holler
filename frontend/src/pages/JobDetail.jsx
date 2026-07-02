@@ -14,12 +14,14 @@ export default function JobDetail() {
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [dependsOnIds, setDependsOnIds] = useState([]);
   const [requiredToolIds, setRequiredToolIds] = useState([]);
+  const [requiredMaterialQtys, setRequiredMaterialQtys] = useState({});
   const [addingTask, setAddingTask] = useState(false);
   const [receiveQtys, setReceiveQtys] = useState({});
   const [leftoverQtys, setLeftoverQtys] = useState({});
   const [reconciling, setReconciling] = useState(false);
 
   const allTools = useLiveQuery(() => db.tools.orderBy("name").toArray(), [], []);
+  const allMaterials = useLiveQuery(() => db.materials.orderBy("name").toArray(), [], []);
 
   const fetchJob = () => {
     authFetch(`/jobs/${id}`)
@@ -56,17 +58,23 @@ export default function JobDetail() {
   const handleAddTask = async (e) => {
     e.preventDefault();
     if (!newTaskTitle.trim()) return;
+    // Only materials with a positive quantity become requirements.
+    const required_materials = Object.entries(requiredMaterialQtys)
+      .map(([material_id, qty]) => ({ material_id, qty_required: parseFloat(qty) }))
+      .filter((rm) => !isNaN(rm.qty_required) && rm.qty_required > 0);
     setAddingTask(true);
     try {
-      const updatedJob = await createJobTask(id, { 
+      const updatedJob = await createJobTask(id, {
         title: newTaskTitle,
         depends_on_ids: dependsOnIds,
-        required_tool_ids: requiredToolIds
+        required_tool_ids: requiredToolIds,
+        required_materials
       });
       setJob(updatedJob);
       setNewTaskTitle("");
       setDependsOnIds([]);
       setRequiredToolIds([]);
+      setRequiredMaterialQtys({});
     } catch (err) {
       alert(err.message);
     } finally {
@@ -213,6 +221,41 @@ export default function JobDetail() {
                       />
                       <span style={{ marginLeft: "0.4rem" }}>{tl.name} ({tl.status})</span>
                     </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {allMaterials?.length > 0 && (
+              <div style={{ marginTop: "0.5rem" }}>
+                <span style={{ fontSize: "0.8rem", color: "gray", display: "block", marginBottom: "0.25rem" }}>
+                  Required Materials (enter a quantity to include):
+                </span>
+                <div style={{
+                  maxHeight: "120px",
+                  overflowY: "auto",
+                  border: "1px solid var(--border)",
+                  padding: "0.5rem",
+                  borderRadius: "4px",
+                  background: "white"
+                }}>
+                  {allMaterials.map(m => (
+                    <div key={m.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.25rem", fontSize: "0.85rem" }}>
+                      <span>{m.name}</span>
+                      <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                        <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          placeholder="qty"
+                          value={requiredMaterialQtys[m.id] || ""}
+                          onChange={(e) => setRequiredMaterialQtys(prev => ({ ...prev, [m.id]: e.target.value }))}
+                          disabled={addingTask}
+                          style={{ width: "70px", padding: "0.15rem 0.25rem" }}
+                        />
+                        <span style={{ color: "gray" }}>{m.unit}</span>
+                      </span>
+                    </div>
                   ))}
                 </div>
               </div>

@@ -36,6 +36,21 @@ class MaterialTransactionRead(BaseModel):
     created_at: datetime
     row_version: int
 
+class TaskMaterialRead(BaseModel):
+    """Task→material requirement edge for /sync/pull; powers the shopping list."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    task_id: uuid.UUID
+    material_id: uuid.UUID
+    qty_required: float
+    created_by: Optional[uuid.UUID]
+    created_at: datetime
+    updated_at: datetime
+    deleted: bool
+    deleted_at: Optional[datetime]
+    row_version: int
+
 class MaterialReceive(BaseModel):
     qty: float
     note: Optional[str] = None

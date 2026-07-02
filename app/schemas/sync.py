@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from app.schemas.capture import CaptureRead
 from app.schemas.job import JobSyncRead
 from app.schemas.location import LocationRead, LocationTypeRead
-from app.schemas.material import MaterialRead, MaterialTransactionRead
+from app.schemas.material import MaterialRead, MaterialTransactionRead, TaskMaterialRead
 from app.schemas.task import TaskRead
 from app.schemas.tool import ToolRead
 
@@ -17,4 +17,5 @@ class SyncPullResponse(BaseModel):
     jobs: list[JobSyncRead]
     materials: list[MaterialRead]
     material_transactions: list[MaterialTransactionRead]
+    task_materials: list[TaskMaterialRead]
     cursor: int

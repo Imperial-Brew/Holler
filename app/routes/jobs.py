@@ -9,9 +9,10 @@ from app.auth import STUB_USER_ID
 from app.models.job import Job
 from app.models.task import Task
 from app.models.task_dependency import TaskDependency
-from app.models.material import MaterialTransaction
+from app.models.material import Material, MaterialTransaction
 from app.models.tool import Tool
 from app.models.task_tool import TaskTool
+from app.models.task_material import TaskMaterial
 from app.schemas.job import JobRead, JobDetailRead, JobTaskRead, JobToolRead, JobMaterialRead, JobCreate, JobTaskCreate
 from app.schemas.material import JobReconcile
 from app.holler_auth import get_current_user
@@ -208,6 +209,26 @@ async def create_job_task(
         
         for tool_id in task_in.required_tool_ids:
             db.add(TaskTool(task_id=task.id, tool_id=tool_id, created_by=STUB_USER_ID))
+
+    # Create material requirements
+    if task_in.required_materials:
+        material_ids = [rm.material_id for rm in task_in.required_materials]
+        mat_check = await db.execute(
+            select(Material.id).where(Material.id.in_(material_ids), Material.deleted == False)
+        )
+        found_material_ids = set(mat_check.scalars().all())
+        if len(found_material_ids) != len(set(material_ids)):
+            raise HTTPException(status_code=400, detail="One or more material IDs are invalid")
+
+        for rm in task_in.required_materials:
+            if rm.qty_required <= 0:
+                raise HTTPException(status_code=400, detail="qty_required must be greater than 0")
+            db.add(TaskMaterial(
+                task_id=task.id,
+                material_id=rm.material_id,
+                qty_required=rm.qty_required,
+                created_by=STUB_USER_ID,
+            ))
 
     await db.commit()
     return await get_job_detail(job_id, db, user)

@@ -52,10 +52,15 @@ class JobMaterialRead(BaseModel):
 class JobCreate(BaseModel):
     title: str
 
+class TaskMaterialCreate(BaseModel):
+    material_id: uuid.UUID
+    qty_required: float
+
 class JobTaskCreate(BaseModel):
     title: str
     depends_on_ids: List[uuid.UUID] = []
     required_tool_ids: List[uuid.UUID] = []
+    required_materials: List[TaskMaterialCreate] = []
 
 class JobDetailRead(BaseModel):
     id: uuid.UUID
