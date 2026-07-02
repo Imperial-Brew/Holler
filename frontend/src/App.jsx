@@ -8,6 +8,7 @@ import JobsList from "./pages/JobsList";
 import JobDetail from "./pages/JobDetail";
 import Tools from "./pages/Tools";
 import Materials from "./pages/Materials";
+import ShoppingList from "./pages/ShoppingList";
 import Locations from "./pages/Locations";
 
 export default function App() {
@@ -65,6 +66,7 @@ export default function App() {
               <Link to="/locations">Locations</Link>
               <Link to="/tools">Tools</Link>
               <Link to="/materials">Materials</Link>
+              <Link to="/shopping">Shopping</Link>
             </nav>
           </div>
           <button onClick={() => { logout(); setAuthenticated(false); }}>Logout</button>
@@ -76,6 +78,7 @@ export default function App() {
           <Route path="/jobs/:id" element={<JobDetail />} />
           <Route path="/tools" element={<Tools />} />
           <Route path="/materials" element={<Materials />} />
+          <Route path="/shopping" element={<ShoppingList />} />
           <Route path="/locations" element={<Locations />} />
         </Routes>
       </div>

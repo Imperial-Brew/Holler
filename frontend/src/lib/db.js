@@ -108,4 +108,25 @@ db.version(9)
   })
   .upgrade((tx) => tx.table("meta").put({ key: "cursor", value: 0 }));
 
+// v10: task→material requirement edges. Powers the offline shopping list
+// (needed − on-hand) and JobDetail requirement display. Cursor reset per the
+// rule above.
+db.version(10)
+  .stores({
+    captures: "id",
+    tasks: "id, status, location, job_id",
+    locations: "id",
+    location_types: "id",
+    goals: "id, parentId",
+    taskGoals: "[taskId+goalId], *goalId",
+    taskDependencies: "[taskId+dependsOnTaskId]",
+    tools: "id, name",
+    jobs: "id",
+    materials: "id, name",
+    material_transactions: "id, material_id",
+    task_materials: "id, task_id, material_id",
+    meta: "key",
+  })
+  .upgrade((tx) => tx.table("meta").put({ key: "cursor", value: 0 }));
+
 export default db;

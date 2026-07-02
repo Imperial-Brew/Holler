@@ -86,6 +86,7 @@ export async function applyPull(response) {
     db.jobs,
     db.materials,
     db.material_transactions,
+    db.task_materials,
     db.meta,
     async () => {
       for (const capture of response.captures) {
@@ -140,6 +141,13 @@ export async function applyPull(response) {
       // Ledger rows are append-only — no delete branch.
       for (const mt of response.material_transactions ?? []) {
         await db.material_transactions.put(mt);
+      }
+      for (const tm of response.task_materials ?? []) {
+        if (tm.deleted) {
+          await db.task_materials.delete(tm.id);
+        } else {
+          await db.task_materials.put(tm);
+        }
       }
       await db.meta.put({ key: "cursor", value: response.cursor });
     }
@@ -232,11 +240,11 @@ export async function createJob({ title }) {
   return job;
 }
 
-export async function createJobTask(jobId, { title, depends_on_ids, required_tool_ids }) {
+export async function createJobTask(jobId, { title, depends_on_ids, required_tool_ids, required_materials }) {
   const res = await authFetch(`/jobs/${jobId}/tasks/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ title, depends_on_ids, required_tool_ids })
+    body: JSON.stringify({ title, depends_on_ids, required_tool_ids, required_materials })
   });
   if (!res.ok) {
     const detail = await res.text();
