@@ -6,10 +6,27 @@ from sqlalchemy import select
 from app.database import get_db
 from app.auth import STUB_USER_ID
 from app.models.material import Material, MaterialTransaction
-from app.schemas.material import MaterialReceive
+from app.schemas.material import MaterialCreate, MaterialRead, MaterialReceive
 from app.holler_auth import get_current_user
 
 router = APIRouter(prefix="/materials", tags=["materials"])
+
+@router.post("/", response_model=MaterialRead)
+async def create_material(
+    material_in: MaterialCreate,
+    db: AsyncSession = Depends(get_db),
+    user: str = Depends(get_current_user),
+):
+    material = Material(
+        name=material_in.name,
+        unit=material_in.unit,
+        reorder_point=material_in.reorder_point,
+        created_by=STUB_USER_ID,
+    )
+    db.add(material)
+    await db.commit()
+    await db.refresh(material)
+    return material
 
 @router.post("/{material_id}/receive/", response_model=dict)
 async def receive_material(

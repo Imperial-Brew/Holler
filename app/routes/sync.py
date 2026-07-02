@@ -9,6 +9,7 @@ from app.models.capture import Capture
 from app.models.job import Job
 from app.models.location import Location
 from app.models.location_type import LocationType
+from app.models.material import Material, MaterialTransaction
 from app.models.task import Task
 from app.models.task_dependency import TaskDependency
 from app.models.tool import Tool
@@ -77,6 +78,20 @@ async def sync_pull(
     )
     jobs = job_result.scalars().all()
 
+    material_result = await db.execute(
+        select(Material)
+        .where(Material.row_version > since)
+        .order_by(Material.row_version.asc())
+    )
+    materials = material_result.scalars().all()
+
+    mt_result = await db.execute(
+        select(MaterialTransaction)
+        .where(MaterialTransaction.row_version > since)
+        .order_by(MaterialTransaction.row_version.asc())
+    )
+    material_transactions = mt_result.scalars().all()
+
     all_versions = (
         [c.row_version for c in captures]
         + [t.row_version for t in tasks]
@@ -84,6 +99,8 @@ async def sync_pull(
         + [lt.row_version for lt in location_types]
         + [tl.row_version for tl in tools]
         + [j.row_version for j in jobs]
+        + [m.row_version for m in materials]
+        + [mt.row_version for mt in material_transactions]
     )
     cursor = max(all_versions) if all_versions else since
 
@@ -101,5 +118,7 @@ async def sync_pull(
         location_types=location_types,
         tools=tools,
         jobs=jobs,
+        materials=materials,
+        material_transactions=material_transactions,
         cursor=cursor,
     )
