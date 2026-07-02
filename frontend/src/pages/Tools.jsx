@@ -1,10 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import db from "../lib/db";
-import { createTool } from "../lib/sync";
+import { createTool, sync } from "../lib/sync";
 import LocationPicker from "../components/LocationPicker";
 
 export default function Tools() {
+  // Re-sync on navigation so the Dexie cache isn't stale from an earlier session.
+  useEffect(() => {
+    if (navigator.onLine) {
+      sync();
+    }
+  }, []);
+
   const tools = useLiveQuery(() => db.tools.orderBy("name").toArray(), [], []);
   const locations = useLiveQuery(() => db.locations.toArray(), [], []);
   

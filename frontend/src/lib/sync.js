@@ -22,6 +22,12 @@ export async function createCapture({ raw_text, location_hint, source }) {
   }
 }
 
+// 401 (dead token), 408, and 429 are transient; other 4xxs mean the server
+// will never accept this capture, so quarantine it instead of blocking the queue.
+function isPermanentRejection(status) {
+  return status >= 400 && status < 500 && ![401, 408, 429].includes(status);
+}
+
 export async function flush() {
   const pending = await db.captures.filter((c) => c.pendingPush).toArray();
 
@@ -40,10 +46,23 @@ export async function flush() {
         },
         body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error(`POST failed: ${res.status}`);
+      if (!res.ok) {
+        if (isPermanentRejection(res.status)) {
+          const detail = await res.text().catch(() => "");
+          console.warn(`flush: capture ${row.id} rejected (${res.status}), quarantining`, detail);
+          await db.captures.put({
+            ...row,
+            pendingPush: false,
+            pushError: `Rejected by server (${res.status})`,
+          });
+          continue; // keep flushing the rest of the queue
+        }
+        throw new Error(`POST failed: ${res.status}`);
+      }
       const confirmed = await res.json();
-      await db.captures.put({ ...confirmed, pendingPush: false });
+      await db.captures.put({ ...confirmed, pendingPush: false, pushError: null });
     } catch (e) {
+      // Network error or transient server failure: stop and retry next sync.
       console.warn("flush: stopping on error", e);
       break;
     }
@@ -64,6 +83,7 @@ export async function applyPull(response) {
     db.locations,
     db.location_types,
     db.tools,
+    db.jobs,
     db.meta,
     async () => {
       for (const capture of response.captures) {
@@ -99,6 +119,13 @@ export async function applyPull(response) {
           await db.tools.delete(tool.id);
         } else {
           await db.tools.put(tool);
+        }
+      }
+      for (const job of response.jobs ?? []) {
+        if (job.deleted) {
+          await db.jobs.delete(job.id);
+        } else {
+          await db.jobs.put(job);
         }
       }
       await db.meta.put({ key: "cursor", value: response.cursor });

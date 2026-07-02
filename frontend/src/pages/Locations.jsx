@@ -1,8 +1,17 @@
+import { useEffect } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import db from "../lib/db";
+import { sync } from "../lib/sync";
 import AddPlaceForm from "../components/AddPlaceForm";
 
 export default function Locations() {
+  // Re-sync on navigation so the Dexie cache isn't stale from an earlier session.
+  useEffect(() => {
+    if (navigator.onLine) {
+      sync();
+    }
+  }, []);
+
   const locations = useLiveQuery(() => db.locations.toArray(), [], []);
   const locationTypes = useLiveQuery(() => db.location_types.toArray(), [], []);
 

@@ -14,7 +14,10 @@ from app.routes.jobs import router as jobs_router
 from app.routes.materials import router as materials_router
 from app.routes.tools import router as tools_router
 
-app = FastAPI(title="Holler", version="0.1.0")
+# redirect_slashes=False: behind Caddy's handle_path the /api prefix is stripped,
+# so an automatic 307 would point at a path Caddy serves as the SPA. Mismatched
+# slashes must fail loudly as 404s instead.
+app = FastAPI(title="Holler", version="0.1.0", redirect_slashes=False)
 
 app.add_middleware(
     CORSMiddleware,

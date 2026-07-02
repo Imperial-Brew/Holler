@@ -56,4 +56,17 @@ db.version(6).stores({
   meta: "key",
 });
 
+db.version(7).stores({
+  captures: "id",
+  tasks: "id, status, location, job_id",
+  locations: "id",
+  location_types: "id",
+  goals: "id, parentId",
+  taskGoals: "[taskId+goalId], *goalId",
+  taskDependencies: "[taskId+dependsOnTaskId]",
+  tools: "id, name",
+  jobs: "id",
+  meta: "key",
+});
+
 export default db;

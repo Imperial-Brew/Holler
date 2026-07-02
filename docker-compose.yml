@@ -30,6 +30,9 @@ services:
       HOLLER_JWT_SECRET: ${HOLLER_JWT_SECRET}
       HOLLER_USER: ${HOLLER_USER}
       HOLLER_PW_HASH: ${HOLLER_PW_HASH}
+      # Trust X-Forwarded-* from Caddy; uvicorn's default only trusts 127.0.0.1,
+      # which silently ignores the headers coming from the caddy container.
+      FORWARDED_ALLOW_IPS: "*"
 
   caddy:
     build:

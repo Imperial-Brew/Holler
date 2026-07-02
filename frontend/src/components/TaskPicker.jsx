@@ -12,6 +12,7 @@ export default function TaskPicker({ onPick, excludeTaskId, disabled }) {
     if (t.id === excludeTaskId) return false;
     if (t.status === 'done') return false;
     if (t.deleted) return false;
+    if (t.is_milestone) return false;
     if (!lowerFilter) return true;
     return t.title.toLowerCase().includes(lowerFilter);
   });
