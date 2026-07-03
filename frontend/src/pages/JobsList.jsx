@@ -23,15 +23,31 @@ export default function JobsList() {
   // Display status comes from the milestone task (same derivation the server
   // uses); the jobs.status column is only a fallback until tasks sync.
   const milestoneStatus = {};
+  const unresolvedByJob = {};
+  const taskCountByJob = {};
   for (const t of tasks ?? []) {
-    if (t.is_milestone && t.job_id && !t.deleted) {
+    if (t.deleted || !t.job_id) continue;
+    if (t.is_milestone) {
       milestoneStatus[t.job_id] = t.status;
+      continue;
+    }
+    taskCountByJob[t.job_id] = (taskCountByJob[t.job_id] || 0) + 1;
+    if (t.status === "open" || t.status === "in_progress") {
+      unresolvedByJob[t.job_id] = (unresolvedByJob[t.job_id] || 0) + 1;
     }
   }
 
   const jobs = (rawJobs ?? [])
     .filter((j) => !j.deleted)
-    .map((j) => ({ ...j, status: milestoneStatus[j.id] ?? j.status }))
+    .map((j) => {
+      const status = milestoneStatus[j.id] ?? j.status;
+      // Same rule as JobDetail: has tasks, none left open/in_progress, not done.
+      const ready =
+        status !== "done" &&
+        (taskCountByJob[j.id] || 0) > 0 &&
+        (unresolvedByJob[j.id] || 0) === 0;
+      return { ...j, status, ready };
+    })
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
   const loading = rawJobs === undefined;
@@ -99,10 +115,10 @@ export default function JobsList() {
                     padding: "0.2rem 0.6rem",
                     borderRadius: "12px",
                     fontSize: "0.8em",
-                    background: job.status === "done" ? "#4caf50" : "#2196f3",
+                    background: job.status === "done" ? "#4caf50" : (job.ready ? "#ff9800" : "#2196f3"),
                     color: "white"
                   }}>
-                    {job.status}
+                    {job.status === "done" ? "done" : (job.ready ? "ready to complete" : job.status)}
                   </span>
                 </div>
                 <div style={{ fontSize: "0.8em", color: "gray", marginTop: "0.5rem" }}>
