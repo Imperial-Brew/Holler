@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { login } from "../holler_auth_client";
+import ToolsMark from "./ToolsMark";
 
 export default function Login({ onLoginSuccess }) {
   const [username, setUsername] = useState("");
@@ -22,51 +23,35 @@ export default function Login({ onLoginSuccess }) {
   };
 
   return (
-    <div style={{
-      maxWidth: "320px",
-      margin: "100px auto",
-      padding: "2rem",
-      border: "1px solid var(--border)",
-      borderRadius: "8px",
-      textAlign: "center",
-      backgroundColor: "var(--bg-card, #fff)",
-      boxShadow: "0 4px 6px rgba(0,0,0,0.1)"
-    }}>
-      <h2 style={{ marginBottom: "1.5rem" }}>Holler Login</h2>
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-        <input
-          type="text"
-          placeholder="Username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          required
-          autoFocus
-          style={{ padding: "0.5rem", borderRadius: "4px", border: "1px solid var(--border)" }}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          style={{ padding: "0.5rem", borderRadius: "4px", border: "1px solid var(--border)" }}
-        />
-        <button 
-          type="submit" 
-          disabled={loading}
-          style={{ 
-            padding: "0.75rem", 
-            borderRadius: "4px", 
-            border: "none", 
-            backgroundColor: "var(--primary, #007bff)", 
-            color: "white",
-            cursor: loading ? "not-allowed" : "pointer"
-          }}
-        >
-          {loading ? "Logging in..." : "Login"}
-        </button>
-      </form>
-      {error && <p style={{ color: "red", marginTop: "1rem" }}>{error}</p>}
+    <div style={{ minHeight: "100svh", display: "flex", alignItems: "center", justifyContent: "center", padding: "var(--sp-4)" }}>
+      <div className="card" style={{ width: "100%", maxWidth: "340px", textAlign: "center", padding: "var(--sp-6)" }}>
+        <div style={{ color: "var(--primary)", marginBottom: "var(--sp-3)", display: "flex", justifyContent: "center" }}>
+          <ToolsMark size="46" />
+        </div>
+        <h1 style={{ marginBottom: "var(--sp-1)" }}>Holler</h1>
+        <p className="muted" style={{ marginBottom: "var(--sp-5)" }}>Sign in to your workshop</p>
+        <form onSubmit={handleSubmit} className="stack" style={{ gap: "var(--sp-3)" }}>
+          <input
+            type="text"
+            placeholder="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+            autoFocus
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <button type="submit" className="btn--primary" disabled={loading}>
+            {loading ? "Logging in…" : "Login"}
+          </button>
+        </form>
+        {error && <p style={{ color: "var(--danger)", marginTop: "var(--sp-4)" }}>{error}</p>}
+      </div>
     </div>
   );
 }

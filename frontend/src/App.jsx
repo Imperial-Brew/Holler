@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Link, NavLink } from "react-router-dom";
 import { sync } from "./lib/sync";
 import Login from "./components/Login";
+import ToolsMark from "./components/ToolsMark";
 import { isLoggedIn, logout } from "./holler_auth_client";
 import Board from "./pages/Board";
 import JobsList from "./pages/JobsList";
@@ -56,20 +57,22 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <div style={{ maxWidth: "800px", margin: "0 auto", padding: "1rem" }}>
-        <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
-            <h1 style={{ margin: 0 }}><Link to="/" style={{ textDecoration: "none", color: "inherit" }}>Holler</Link></h1>
-            <nav style={{ display: "flex", gap: "1rem" }}>
-              <Link to="/">Board</Link>
-              <Link to="/jobs">Jobs</Link>
-              <Link to="/locations">Locations</Link>
-              <Link to="/tools">Tools</Link>
-              <Link to="/materials">Materials</Link>
-              <Link to="/shopping">Shopping</Link>
-            </nav>
+      <div className="app-shell">
+        <header className="app-header">
+          <div className="app-header__bar">
+            <Link to="/" className="brand">
+              <ToolsMark size="1.2em" className="brand__mark" />Holler
+            </Link>
+            <button className="btn--ghost btn--sm" onClick={() => { logout(); setAuthenticated(false); }}>Logout</button>
           </div>
-          <button onClick={() => { logout(); setAuthenticated(false); }}>Logout</button>
+          <nav className="nav">
+            <NavLink to="/" end>Board</NavLink>
+            <NavLink to="/jobs">Jobs</NavLink>
+            <NavLink to="/locations">Locations</NavLink>
+            <NavLink to="/tools">Tools</NavLink>
+            <NavLink to="/materials">Materials</NavLink>
+            <NavLink to="/shopping">Shopping</NavLink>
+          </nav>
         </header>
 
         <Routes>
