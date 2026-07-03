@@ -34,25 +34,23 @@ function DependencyEditor({ taskId, dependsOnIds, taskMap, online }) {
   };
 
   return (
-    <div style={{ marginTop: "0.5rem", fontSize: "0.9em" }}>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem", marginBottom: "0.25rem" }}>
-        {dependsOnIds.map(id => {
-          const depTask = taskMap[id];
-          return (
-            <span key={id} style={{ background: "var(--code-bg)", padding: "0.1rem 0.4rem", borderRadius: "4px", border: "1px solid var(--border)" }}>
-              {depTask ? depTask.title : id}
-              <button
-                onClick={() => handleRemove(id)}
-                disabled={disabled}
-                style={{ marginLeft: "0.25rem", border: "none", background: "none", cursor: "pointer", padding: 0 }}
-              >✕</button>
-            </span>
-          );
-        })}
-      </div>
+    <div style={{ marginTop: "var(--sp-3)", fontSize: "0.9em" }}>
+      {dependsOnIds.length > 0 && (
+        <div className="row row--wrap" style={{ gap: "var(--sp-1)", marginBottom: "var(--sp-2)" }}>
+          {dependsOnIds.map(id => {
+            const depTask = taskMap[id];
+            return (
+              <span key={id} className="chip">
+                {depTask ? depTask.title : id}
+                <button onClick={() => handleRemove(id)} disabled={disabled} aria-label="Remove dependency">✕</button>
+              </span>
+            );
+          })}
+        </div>
+      )}
       <TaskPicker onPick={handleAdd} excludeTaskId={taskId} disabled={disabled} />
-      {error && <span style={{ color: "red", marginLeft: "0.5rem" }}>{error}</span>}
-      {!online && <span style={{ color: "gray", fontSize: "0.8em", display: "block" }}>Online only</span>}
+      {error && <span style={{ color: "var(--danger)", marginLeft: "var(--sp-2)" }}>{error}</span>}
+      {!online && <span className="muted" style={{ fontSize: "0.8em", display: "block" }}>Online only</span>}
     </div>
   );
 }
@@ -84,49 +82,41 @@ function TaskCard({ task, taskMap, locMap, jobMap, online, type }) {
   };
 
   return (
-    <div style={{
-      border: "1px solid var(--border)",
-      padding: "0.75rem",
-      marginBottom: "0.75rem",
-      borderRadius: "4px",
-      opacity: task.status === "done" ? 0.6 : 1,
-      background: task.status === "done" ? "rgba(0,0,0,0.05)" : "transparent"
-    }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+    <div
+      className="card"
+      style={{
+        marginBottom: "var(--sp-3)",
+        borderLeft: type === "blocked" ? "3px solid var(--info)" : "3px solid var(--primary)",
+        opacity: task.status === "done" ? 0.65 : 1,
+      }}
+    >
+      <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start", gap: "var(--sp-3)" }}>
         <div>
-          <strong style={{ fontSize: "1.1em" }}>{task.title}</strong>
-          {task.due_date && <span style={{ marginLeft: "0.5rem" }}>📅 {task.due_date}</span>}
-          {place && (
-            <span style={{ marginLeft: "0.5rem", color: "gray" }}>
-              📍 {place.name}{place.code ? ` [${place.code}]` : ""}
-            </span>
-          )}
-          {task.job_id && (
-            <Link
-              to={`/jobs/${task.job_id}`}
-              style={{
-                marginLeft: "0.5rem",
-                fontSize: "0.8em",
-                padding: "0.1rem 0.4rem",
-                borderRadius: "10px",
-                border: "1px solid var(--border)",
-                textDecoration: "none",
-              }}
-            >
-              🔨 {job ? job.title : "Job"}
-            </Link>
-          )}
+          <strong style={{ fontSize: "1.05em", color: "var(--ink)", textDecoration: task.status === "done" ? "line-through" : "none" }}>{task.title}</strong>
+          <div className="row row--wrap" style={{ gap: "var(--sp-2)", marginTop: "var(--sp-1)" }}>
+            {task.due_date && <span className="muted" style={{ fontSize: "0.85em" }}>📅 {task.due_date}</span>}
+            {place && (
+              <span className="muted" style={{ fontSize: "0.85em" }}>
+                📍 {place.name}{place.code ? ` [${place.code}]` : ""}
+              </span>
+            )}
+            {task.job_id && (
+              <Link to={`/jobs/${task.job_id}`} className="badge badge--wood">
+                {job ? job.title : "Job"}
+              </Link>
+            )}
+          </div>
         </div>
-        <div>
-          <button onClick={handleToggleStatus} disabled={disabled}>
+        <div className="row" style={{ gap: "var(--sp-1)", flexShrink: 0 }}>
+          <button className="btn--sm" onClick={handleToggleStatus} disabled={disabled}>
             {task.status === "done" ? "Reopen" : "Done"}
           </button>
-          <button onClick={handleDelete} disabled={disabled} style={{ marginLeft: "0.25rem" }}>Delete</button>
+          <button className="btn--sm btn--danger" onClick={handleDelete} disabled={disabled}>Delete</button>
         </div>
       </div>
 
       {type === "blocked" && task.blockers && task.blockers.length > 0 && (
-        <div style={{ marginTop: "0.5rem", color: "var(--text-dim)", fontSize: "0.9em" }}>
+        <div className="muted" style={{ marginTop: "var(--sp-2)", fontSize: "0.85em" }}>
           waiting on: {task.blockers.map(b => b.title).join(", ")}
         </div>
       )}
@@ -171,29 +161,29 @@ function RegisterForm({ capture, online }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: "inline" }}>
+    <form onSubmit={handleSubmit} className="row row--wrap" style={{ gap: "var(--sp-2)", marginTop: "var(--sp-2)" }}>
       <input
         type="text"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         disabled={disabled}
-        style={{ marginRight: "0.25rem" }}
+        style={{ flex: "2 1 160px", width: "auto" }}
       />
       <input
         type="date"
         value={dueDate}
         onChange={(e) => setDueDate(e.target.value)}
         disabled={disabled}
-        style={{ marginRight: "0.25rem" }}
+        style={{ flex: "1 1 140px", width: "auto" }}
       />
-      <span style={{ position: "relative", display: "inline-block", marginRight: "0.25rem" }}>
+      <span style={{ position: "relative", display: "inline-block" }}>
         <LocationPicker value={locationId} onChange={setLocationId} disabled={disabled} />
       </span>
-      <button type="submit" disabled={disabled}>
+      <button type="submit" className="btn--primary" disabled={disabled}>
         {submitting ? "Registering…" : "Register"}
       </button>
       {error && (
-        <span style={{ color: "red", marginLeft: "0.5rem" }}>{error}</span>
+        <span style={{ color: "var(--danger)", marginLeft: "var(--sp-2)" }}>{error}</span>
       )}
     </form>
   );
@@ -214,6 +204,7 @@ export default function Board({ online, onSync }) {
   const tasks = useLiveQuery(() => db.tasks.toArray(), [], []);
   const locations = useLiveQuery(() => db.locations.toArray(), [], []);
   const jobs = useLiveQuery(() => db.jobs.toArray(), [], []);
+  const cursor = useLiveQuery(() => db.meta.get("cursor"), [])?.value ?? 0;
 
   const locMap = {};
   if (locations) for (const loc of locations) locMap[loc.id] = loc;
@@ -268,79 +259,90 @@ export default function Board({ online, onSync }) {
 
   return (
     <div>
-      <p>
-        {online ? "🟢 Online" : "🔴 Offline"} | Cursor: {useLiveQuery(() => db.meta.get("cursor"), [])?.value ?? 0}{" "}
-        <button onClick={onSync}>Sync</button>
-      </p>
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      <div className="statusbar">
+        <span>
+          <span className={`dot ${online ? "dot--on" : "dot--off"}`} />
+          {online ? "Online" : "Offline"}
+        </span>
+        {import.meta.env.DEV && <span>Cursor {cursor}</span>}
+        <button className="btn--ghost btn--sm" onClick={onSync}>Sync</button>
+      </div>
+      {error && <p style={{ color: "var(--danger)" }}>{error}</p>}
 
-      <div style={{ marginBottom: "2rem", borderBottom: "1px solid var(--border)", paddingBottom: "1rem" }}>
+      <div className="row" style={{ gap: "var(--sp-2)", marginBottom: "var(--sp-6)" }}>
         <input
           type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-          placeholder="New capture…"
-          style={{ width: "300px", marginRight: "0.5rem" }}
+          placeholder="Capture a thought…"
+          className="grow"
         />
-        <button onClick={handleAdd}>Add</button>
+        <button className="btn--primary" onClick={handleAdd}>Add</button>
       </div>
 
       {failedCaptures.length > 0 && (
-        <div style={{ marginBottom: "2rem" }}>
-          <h2 style={{ color: "red" }}>Failed to Sync</h2>
-          <ul style={{ listStyle: "none", padding: 0 }}>
+        <div className="section">
+          <div className="section__head">
+            <h2 style={{ color: "var(--danger)" }}>Failed to Sync</h2>
+            <span className="section__count">{failedCaptures.length}</span>
+          </div>
+          <div className="stack">
             {failedCaptures.map((c) => (
-              <li key={c.id} style={{ marginBottom: "0.5rem", padding: "0.5rem", border: "1px solid red", borderRadius: "4px" }}>
-                <strong>{c.raw_text}</strong>
-                <span style={{ color: "red", marginLeft: "0.5rem", fontSize: "0.9em" }}>{c.pushError}</span>
-                <button
-                  onClick={() => db.captures.put({ ...c, pendingPush: true, pushError: null })}
-                  style={{ marginLeft: "0.5rem" }}
-                >
-                  Retry
-                </button>
-                <button
-                  onClick={() => confirm("Discard this capture? It was never saved to the server.") && db.captures.delete(c.id)}
-                  style={{ marginLeft: "0.25rem" }}
-                >
-                  Discard
-                </button>
-              </li>
+              <div key={c.id} className="card" style={{ borderColor: "var(--danger)", borderLeft: "3px solid var(--danger)" }}>
+                <div className="row row--wrap" style={{ gap: "var(--sp-2)" }}>
+                  <strong style={{ color: "var(--ink)" }}>{c.raw_text}</strong>
+                  <span style={{ color: "var(--danger)", fontSize: "0.85em" }}>{c.pushError}</span>
+                </div>
+                <div className="row" style={{ gap: "var(--sp-2)", marginTop: "var(--sp-2)" }}>
+                  <button className="btn--sm" onClick={() => db.captures.put({ ...c, pendingPush: true, pushError: null })}>
+                    Retry
+                  </button>
+                  <button
+                    className="btn--sm btn--danger"
+                    onClick={() => confirm("Discard this capture? It was never saved to the server.") && db.captures.delete(c.id)}
+                  >
+                    Discard
+                  </button>
+                </div>
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
       )}
 
       {toRegister.length > 0 && (
-        <div style={{ marginBottom: "2rem" }}>
-          <h2>To Register</h2>
-          <ul style={{ listStyle: "none", padding: 0 }}>
+        <div className="section">
+          <div className="section__head">
+            <h2>To Register</h2>
+            <span className="section__count">{toRegister.length}</span>
+          </div>
+          <div className="stack">
             {toRegister.map((c) => (
-              <li key={c.id} style={{ marginBottom: "1rem", padding: "0.5rem", border: "1px dashed var(--border)" }}>
-                <strong>{c.raw_text}</strong>
-                <br />
+              <div key={c.id} className="card card--muted" style={{ borderStyle: "dashed" }}>
+                <strong style={{ color: "var(--ink)" }}>{c.raw_text}</strong>
                 <RegisterForm capture={c} online={online} />
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
       )}
 
-      <div style={{ marginBottom: "1rem" }}>
-        <label style={{ fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <input
-            type="checkbox"
-            checked={readyOnly}
-            onChange={(e) => setReadyOnly(e.target.checked)}
-          />
-          What can I do right now?
-        </label>
-      </div>
+      <label className="card card--muted" style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)", cursor: "pointer", fontWeight: 650, color: "var(--ink)", marginBottom: "var(--sp-6)", padding: "var(--sp-3) var(--sp-4)" }}>
+        <input
+          type="checkbox"
+          checked={readyOnly}
+          onChange={(e) => setReadyOnly(e.target.checked)}
+        />
+        What can I do right now?
+      </label>
 
-      <section>
-        <h2>Ready</h2>
-        {ready.length === 0 ? <p style={{ color: "gray" }}>Nothing ready.</p> : (
+      <section className="section">
+        <div className="section__head">
+          <h2>Ready</h2>
+          <span className="section__count">{ready.length}</span>
+        </div>
+        {ready.length === 0 ? <p className="empty">Nothing ready.</p> : (
           ready.map(t => (
             <TaskCard key={t.id} task={t} taskMap={taskMap} locMap={locMap} jobMap={jobMap} online={online} type="ready" />
           ))
@@ -349,18 +351,24 @@ export default function Board({ online, onSync }) {
 
       {!readyOnly && (
         <>
-          <section>
-            <h2>Blocked</h2>
-            {blocked.length === 0 ? <p style={{ color: "gray" }}>Nothing blocked.</p> : (
+          <section className="section">
+            <div className="section__head">
+              <h2>Blocked</h2>
+              <span className="section__count">{blocked.length}</span>
+            </div>
+            {blocked.length === 0 ? <p className="empty">Nothing blocked.</p> : (
               blocked.map(t => (
                 <TaskCard key={t.id} task={t} taskMap={taskMap} locMap={locMap} jobMap={jobMap} online={online} type="blocked" />
               ))
             )}
           </section>
 
-          <section>
-            <h2>Done</h2>
-            {done.length === 0 ? <p style={{ color: "gray" }}>Nothing done yet.</p> : (
+          <section className="section">
+            <div className="section__head">
+              <h2>Done</h2>
+              <span className="section__count">{done.length}</span>
+            </div>
+            {done.length === 0 ? <p className="empty">Nothing done yet.</p> : (
               done.map(t => (
                 <TaskCard key={t.id} task={t} taskMap={taskMap} locMap={locMap} jobMap={jobMap} online={online} type="done" />
               ))

@@ -1,111 +1,424 @@
+/* ==========================================================================
+   Holler design system
+   Warm, friendly, jobsite-utilitarian. Mobile-first, responsive, dark-aware.
+   ========================================================================== */
+
+/* ---- Tokens ------------------------------------------------------------- */
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  /* Homestead — olive drab + oak + rust, weathered and muted */
+  --bg: #e9e2d0;
+  --surface: #f4efe1;
+  --surface-2: #e4dcc6;
+  --border: #d9cfb6;
+  --border-strong: #c7ba99;
+
+  --ink: #2c2a20;      /* headings */
+  --text: #5a5342;     /* body */
+  --text-dim: #8a8168; /* secondary / meta */
+
+  --primary: #6a7548;       /* olive drab — the accent */
+  --primary-hover: #58623c;
+  --primary-soft: rgba(106, 117, 72, 0.15);
+  --on-primary: #f6f1e4;
+
+  --wood: #96703c;          /* oak */
+  --wood-soft: rgba(150, 112, 60, 0.16);
+  --metal: #7c7d77;         /* pewter */
+
+  --success: #5f7245;       /* moss */
+  --success-soft: rgba(95, 114, 69, 0.16);
+  --info: #5d7079;          /* weathered steel-blue */
+  --info-soft: rgba(93, 112, 121, 0.16);
+  --danger: #a5543a;        /* rust */
+  --danger-soft: rgba(165, 84, 58, 0.14);
+
+  /* Spacing scale */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+
+  /* Radius + elevation */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-pill: 999px;
+  --shadow-sm: 0 1px 2px rgba(44, 38, 32, 0.06), 0 1px 3px rgba(44, 38, 32, 0.08);
+  --shadow-md: 0 4px 6px -2px rgba(44, 38, 32, 0.08), 0 10px 20px -6px rgba(44, 38, 32, 0.12);
 
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
   color-scheme: light dark;
+  font: 16px/1.5 var(--sans);
   color: var(--text);
   background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  text-rendering: optimizeLegibility;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
+    --bg: #1b1a13;
+    --surface: #26241a;
+    --surface-2: #302d20;
+    --border: #3a3627;
+    --border-strong: #4b4632;
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
+    --ink: #f0ead8;
+    --text: #c7bfa8;
+    --text-dim: #8f886f;
+
+    --primary: #9caa6b;       /* olive lifts for dark */
+    --primary-hover: #b0bd80;
+    --primary-soft: rgba(156, 170, 107, 0.16);
+    --on-primary: #1b1a13;
+
+    --wood: #c39a63;
+    --wood-soft: rgba(195, 154, 99, 0.18);
+    --metal: #9a9a90;
+
+    --success: #82995f;
+    --success-soft: rgba(130, 153, 95, 0.18);
+    --info: #7f959d;
+    --info-soft: rgba(127, 149, 157, 0.18);
+    --danger: #cf7a5f;
+    --danger-soft: rgba(207, 122, 95, 0.18);
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.35);
+    --shadow-md: 0 4px 6px -2px rgba(0, 0, 0, 0.35), 0 10px 20px -6px rgba(0, 0, 0, 0.5);
   }
+}
+
+/* ---- Legacy aliases -----------------------------------------------------
+   Older pages (Materials, Tools, pickers) still reference these names. Map
+   them onto the new tokens so nothing renders broken while pages migrate.
+   Resolved at use-time, so they follow light/dark automatically. */
+:root {
+  --text-h: var(--ink);
+  --bg-card: var(--surface);
+  --bg-muted: var(--surface-2);
+  --code-bg: var(--surface-2);
+  --accent: var(--primary);
+  --accent-bg: var(--primary-soft);
+  --accent-border: var(--primary);
+}
+
+/* ---- Base --------------------------------------------------------------- */
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100svh;
 }
 
 #root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
   min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
+h1, h2, h3 {
+  font-family: var(--sans);
+  color: var(--ink);
+  line-height: 1.2;
   margin: 0;
 }
+h1 { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; }
+h2 { font-size: 1.15rem; font-weight: 650; letter-spacing: -0.01em; }
+h3 { font-size: 1rem; font-weight: 650; }
+p { margin: 0; }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+a {
+  color: var(--primary);
+  text-decoration: none;
 }
+a:hover { text-decoration: underline; }
 
 code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+  font-family: var(--mono);
+  font-size: 0.85em;
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+::placeholder { color: var(--text-dim); }
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+/* ---- Layout shell ------------------------------------------------------- */
+.app-shell {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: var(--sp-4) var(--sp-4) var(--sp-7);
+}
+
+.app-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0 var(--sp-4);
+  margin-bottom: var(--sp-5);
+  border-bottom: 1px solid var(--border);
+}
+.app-header__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  text-decoration: none;
+}
+.brand:hover { text-decoration: none; }
+.brand__mark {
+  color: var(--primary);
+  line-height: 1;
+}
+
+/* ---- Nav (pill tabs, responsive) --------------------------------------- */
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+.nav a {
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-pill);
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 550;
+  line-height: 1;
+  white-space: nowrap;
+}
+.nav a:hover {
+  background: var(--surface-2);
+  text-decoration: none;
+}
+.nav a.active {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+/* ---- Buttons ------------------------------------------------------------ */
+button,
+.btn {
+  font: inherit;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-4);
+  min-height: 40px; /* comfortable touch target */
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.05s;
+}
+button:hover,
+.btn:hover {
+  background: var(--surface-2);
+  border-color: var(--text-dim);
+}
+button:active,
+.btn:active { transform: translateY(1px); }
+button:disabled,
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn--primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+.btn--primary:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+.btn--ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text);
+}
+.btn--ghost:hover {
+  background: var(--surface-2);
+  border-color: transparent;
+}
+
+.btn--danger {
+  color: var(--danger);
+  border-color: var(--danger-soft);
+  background: transparent;
+}
+.btn--danger:hover {
+  background: var(--danger-soft);
+  border-color: var(--danger);
+}
+
+.btn--sm {
+  min-height: 32px;
+  padding: var(--sp-1) var(--sp-3);
+  font-size: 0.85rem;
+  border-radius: var(--r-sm);
+}
+
+/* ---- Inputs ------------------------------------------------------------- */
+input[type="text"],
+input[type="date"],
+input[type="number"],
+input[type="search"],
+input[type="password"],
+select,
+textarea,
+.input {
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  padding: var(--sp-2) var(--sp-3);
+  min-height: 40px;
+  width: 100%;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+/* ---- Card --------------------------------------------------------------- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4);
+  box-shadow: var(--shadow-sm);
+}
+.card--flat { box-shadow: none; }
+.card--muted { background: var(--surface-2); box-shadow: none; }
+
+/* ---- Badges & chips ----------------------------------------------------- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 2px 10px;
+  border-radius: var(--r-pill);
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.6;
+  background: var(--surface-2);
+  color: var(--text);
+  text-transform: capitalize;
+}
+.badge--success { background: var(--success-soft); color: var(--success); }
+.badge--info    { background: var(--info-soft);    color: var(--info); }
+.badge--danger  { background: var(--danger-soft);  color: var(--danger); }
+.badge--primary { background: var(--primary-soft); color: var(--primary); }
+.badge--wood    { background: var(--wood-soft);    color: var(--wood); }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 2px 4px 2px 10px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 0.82rem;
+}
+.chip button {
+  min-height: 0;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  line-height: 1;
+}
+.chip button:hover { background: none; color: var(--danger); }
+
+/* ---- Helpers ------------------------------------------------------------ */
+.row { display: flex; gap: var(--sp-2); align-items: center; }
+.row--wrap { flex-wrap: wrap; }
+.stack { display: flex; flex-direction: column; gap: var(--sp-2); }
+.grow { flex: 1; }
+.muted { color: var(--text-dim); }
+.section { margin-bottom: var(--sp-6); }
+.section__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+}
+.section__count {
+  font-size: 0.8rem;
+  font-weight: 650;
+  color: var(--text-dim);
+}
+.empty {
+  color: var(--text-dim);
+  font-size: 0.92rem;
+  padding: var(--sp-3) 0;
+}
+.statusbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  margin-bottom: var(--sp-4);
+}
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.dot--on  { background: var(--success); }
+.dot--off { background: var(--danger); }
+
+@media (max-width: 560px) {
+  .app-header { gap: var(--sp-3); }
+  .brand { font-size: 1.25rem; }
 }
