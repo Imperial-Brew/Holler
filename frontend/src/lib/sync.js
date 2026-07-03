@@ -351,6 +351,20 @@ export async function receiveMaterial(materialId, { qty }) {
   return row;
 }
 
+export async function completeJob(jobId) {
+  const res = await authFetch(`/jobs/${jobId}/complete/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Complete job failed (${res.status}): ${detail}`);
+  }
+  const job = await res.json();
+  sync(); // pull the milestone/job status change
+  return job;
+}
+
 export async function reconcileJobMaterials(jobId, { materials }) {
   const res = await authFetch(`/jobs/${jobId}/reconcile-materials/`, {
     method: "POST",

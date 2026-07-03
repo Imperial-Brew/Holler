@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import db from "../lib/db";
 import { authFetch } from "../holler_auth_client";
-import { setTaskStatus, createJobTask, receiveMaterial, reconcileJobMaterials } from "../lib/sync";
+import { setTaskStatus, createJobTask, receiveMaterial, reconcileJobMaterials, completeJob } from "../lib/sync";
 
 export default function JobDetail() {
   const { id } = useParams();
@@ -19,6 +19,7 @@ export default function JobDetail() {
   const [receiveQtys, setReceiveQtys] = useState({});
   const [leftoverQtys, setLeftoverQtys] = useState({});
   const [reconciling, setReconciling] = useState(false);
+  const [completing, setCompleting] = useState(false);
 
   const allTools = useLiveQuery(() => db.tools.orderBy("name").toArray(), [], []);
   const allMaterials = useLiveQuery(() => db.materials.orderBy("name").toArray(), [], []);
@@ -127,23 +128,60 @@ export default function JobDetail() {
     }
   };
 
+  const handleComplete = async () => {
+    if (!window.confirm("Mark this job complete?")) return;
+    setCompleting(true);
+    try {
+      const updatedJob = await completeJob(id);
+      setJob(updatedJob);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setCompleting(false);
+    }
+  };
+
   if (loading) return <div>Loading job details...</div>;
   if (error) return <div style={{ color: "red" }}>Error: {error} <br/> <Link to="/jobs">Back to Jobs</Link></div>;
   if (!job) return null;
 
+  // Ready to complete = not already done, and no task still open/in_progress
+  // (done or cancelled both count as resolved). Server enforces this too.
+  const unresolvedCount = job.tasks.filter(
+    (t) => t.status === "open" || t.status === "in_progress"
+  ).length;
+  const isDone = job.status === "done";
+  const readyToComplete = !isDone && job.tasks.length > 0 && unresolvedCount === 0;
+
   return (
     <div className="job-detail">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem" }}>
         <h1>{job.title}</h1>
-        <span style={{
-          padding: "0.2rem 0.6rem",
-          borderRadius: "12px",
-          background: job.status === "done" ? "#4caf50" : "#2196f3",
-          color: "white"
-        }}>
-          {job.status}
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <span style={{
+            padding: "0.2rem 0.6rem",
+            borderRadius: "12px",
+            background: isDone ? "#4caf50" : (readyToComplete ? "#ff9800" : "#2196f3"),
+            color: "white"
+          }}>
+            {isDone ? "done" : (readyToComplete ? "ready to complete" : job.status)}
+          </span>
+          {!isDone && (
+            <button
+              onClick={handleComplete}
+              disabled={!readyToComplete || completing}
+              title={readyToComplete ? "" : "Finish or cancel all tasks first"}
+            >
+              {completing ? "Completing…" : "Complete Job"}
+            </button>
+          )}
+        </div>
       </div>
+      {!isDone && !readyToComplete && (
+        <p style={{ color: "gray", fontSize: "0.85rem", marginTop: "0.25rem" }}>
+          Finish or cancel all tasks to complete this job.
+        </p>
+      )}
 
       <section style={{ marginBottom: "2rem" }}>
         <h2>Tasks</h2>

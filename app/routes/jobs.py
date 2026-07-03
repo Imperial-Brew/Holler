@@ -233,6 +233,60 @@ async def create_job_task(
     await db.commit()
     return await get_job_detail(job_id, db, user)
 
+@router.post("/{job_id}/complete/", response_model=JobDetailRead)
+async def complete_job(
+    job_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: str = Depends(get_current_user),
+):
+    # Manual completion: finishing the last task no longer auto-completes a job
+    # (the trigger only reopens now), so completing is a deliberate action.
+    query = text("""
+        SELECT j.id, t.id AS ms_id, t.status AS ms_status
+        FROM jobs j
+        JOIN tasks t ON t.job_id = j.id AND t.is_milestone = true
+        WHERE j.id = :job_id AND j.deleted = false AND t.deleted_at IS NULL
+    """)
+    row = (await db.execute(query, {"job_id": job_id})).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if row.ms_status == "done":
+        raise HTTPException(status_code=400, detail="Job already complete")
+
+    # All non-milestone work must be resolved (done or cancelled) first.
+    unresolved = (await db.execute(
+        text("""
+            SELECT count(*) FROM tasks
+            WHERE job_id = :job_id AND is_milestone = false AND deleted_at IS NULL
+              AND status IN ('open','in_progress')
+        """),
+        {"job_id": job_id},
+    )).scalar_one()
+    if unresolved > 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Finish or cancel all tasks before completing the job",
+        )
+
+    # Mark milestone + job done. Updating the milestone status fires the
+    # completion trigger, but it early-returns for milestone rows.
+    await db.execute(text("UPDATE tasks SET status = 'done' WHERE id = :ms_id"), {"ms_id": row.ms_id})
+    await db.execute(text("UPDATE jobs SET status = 'done' WHERE id = :job_id"), {"job_id": job_id})
+
+    # Apply any declared tool effects (this moved off the trigger).
+    await db.execute(
+        text("""
+            UPDATE tools t SET status = e.on_complete_status
+            FROM job_tool_effects e
+            WHERE e.job_id = :job_id AND e.deleted_at IS NULL AND t.id = e.tool_id
+        """),
+        {"job_id": job_id},
+    )
+
+    await db.commit()
+    return await get_job_detail(job_id, db, user)
+
 @router.post("/{job_id}/reconcile-materials/", response_model=JobDetailRead)
 async def reconcile_job_materials(
     job_id: uuid.UUID,
