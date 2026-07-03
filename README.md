@@ -49,15 +49,24 @@ npm run dev
 
 > Dev note: the working copy must live on a **local disk** — Vite crashes when run from a network/mapped share. On any machine where the usual drive is a share, clone to a local path (e.g. `C:\dev\Holler`) and sync via git.
 
-## Current status
+## What's built
 
-Phases 0–4 are in active development. See `Holler_build_plan.md` for the roadmap and current milestone. Architectural decisions and their rationale live in `docs/decisions/`.
+- **Capture → register** — quick offline notes promoted into real tasks at a desk.
+- **Task board** — Ready / Blocked / Done, with dependency chains; readiness is derived, not stored.
+- **Jobs** — work-order containers with an auto-generated milestone task, per-task tool and material requirements, and **manual completion** (finishing the last task marks a job *ready to complete*, not done — see `docs/decisions/` / the completion trigger).
+- **Locations, Tools, Materials** catalogs; an append-only material ledger for offline-safe on-hand tracking.
+- **Shopping list** — needed − on-hand across open jobs, computed offline, with in-store "Got it" check-off.
+
+See `Holler_build_plan.md` for the roadmap. Architectural decisions and their rationale live in `docs/decisions/`.
 
 ## Design principles
 
-- Offline-first; UUID primary keys so IDs are client-generatable.
-- Priority is **computed, not stored** — goals are ranked once, tasks link to the goals they advance, and priority is derived. See `docs/decisions/001-prioritization-model.md`.
-- Traceable and self-hostable by default.
+- **Offline-first.** UUID primary keys (client-generatable); IndexedDB read cache; a single monotonic `row_version` sequence drives cursor-based pull. Adding a synced table has one non-negotiable rule — see `docs/decisions/002-sync-cursor-reset.md`.
+- **Derive, don't store, most state.** Board readiness, job shortfall, and shopping needs are computed at read time from base data.
+- **Append-only where sync is hard.** The material ledger never edits rows; on-hand is the sum of deltas.
+- **Traceable and self-hostable by default.**
+
+> A goal/priority model (ranked goals, tasks inheriting priority) is designed in `docs/decisions/001-prioritization-model.md` but **not yet built** — the `goals` tables exist unused. Treat 001 as intent, not current behavior.
 
 ## Tests & linting
 
