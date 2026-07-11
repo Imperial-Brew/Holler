@@ -70,5 +70,17 @@ See `Holler_build_plan.md` for the roadmap. Architectural decisions and their ra
 
 ## Tests & linting
 
-- Tests: none yet.
+Backend tests run against a **real throwaway Postgres** (started in Docker via
+testcontainers and migrated with the real Alembic migrations), because the job
+logic lives in Postgres triggers. Docker must be running.
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+Coverage is deliberately narrow — the invisible, high-risk core (job
+completion/reopen triggers) rather than CRUD happy-paths. Add tests here when
+you touch trigger or sync behavior.
+
 - Lint: frontend uses oxlint (`cd frontend && npx oxlint`); backend has no linter yet.
