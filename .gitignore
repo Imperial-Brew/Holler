@@ -4,3 +4,4 @@ __pycache__/
 .env
 .idea/
 .background_output_*.txt
+.pytest_cache/
